@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clue Quest 151</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;600;800&display=swap">
+<style>
+/* Layout: one centered column — mode tabs, then a field-notebook card (clue slips or a blurry photo), guess area below. */
+:root {
+  --sky: #e6f2ec;
+  --paper: #fffdf5;
+  --ink: #23362f;
+  --muted: #627a70;
+  --leaf: #2f8a63;
+  --leaf-soft: #d3ecdf;
+  --sun: #f3bd47;
+  --sun-soft: #fdf0cc;
+  --berry: #d9505c;
+  --line: #cfe0d7;
+  --shadow: 0 2px 0 #c4d9cd, 0 10px 24px -14px rgba(35, 54, 47, .35);
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sky: #12201c; --paper: #1b2c27; --ink: #e8f2ec; --muted: #9ab2a7;
+    --leaf: #78c9a0; --leaf-soft: #23413a; --sun: #f0c561; --sun-soft: #3a3320;
+    --berry: #ef8a92; --line: #2c443d;
+    --shadow: 0 2px 0 #0b1512, 0 10px 24px -14px rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --sky: #12201c; --paper: #1b2c27; --ink: #e8f2ec; --muted: #9ab2a7;
+  --leaf: #78c9a0; --leaf-soft: #23413a; --sun: #f0c561; --sun-soft: #3a3320;
+  --berry: #ef8a92; --line: #2c443d;
+  --shadow: 0 2px 0 #0b1512, 0 10px 24px -14px rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--sky);
+  color: var(--ink);
+  font: 400 17px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 40px;
+  min-height: 100%;
+}
+.wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 16px; }
+
+header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { flex: 1; min-width: 0; }
+h1 {
+  font: 800 2.1rem/1 var(--display);
+  margin: 0; letter-spacing: -.01em; color: var(--leaf);
+  text-wrap: balance;
+}
+h1 span { color: var(--sun); -webkit-text-stroke: 1px var(--ink); paint-order: stroke fill; }
+.tag { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+
+.iconbtn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 2px solid var(--line); background: var(--paper); color: var(--ink);
+  border-radius: 999px; padding: 8px 14px; font: 800 .9rem var(--body); cursor: pointer;
+}
+.iconbtn[aria-pressed="true"] { border-color: var(--leaf); background: var(--leaf-soft); }
+.iconbtn:disabled { opacity: .45; cursor: default; }
+.iconbtn svg { width: 18px; height: 18px; flex: none; }
+
+/* Game-type tabs */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modes button {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 12px 14px; border-radius: 18px; cursor: pointer;
+  border: 3px solid var(--line); background: var(--paper); color: var(--ink);
+  min-width: 0;
+}
+.modes button svg { width: 34px; height: 34px; flex: none; color: var(--muted); }
+.modes b { display: block; font: 800 1.2rem/1.1 var(--display); }
+.modes small { display: block; color: var(--muted); font-weight: 700; font-size: .8rem; line-height: 1.25; }
+.modes button[aria-pressed="true"] { border-color: var(--leaf); background: var(--leaf-soft); }
+.modes button[aria-pressed="true"] svg { color: var(--leaf); }
+
+/* Settings */
+details.settings {
+  background: var(--paper); border: 2px solid var(--line); border-radius: 16px; padding: 4px 16px;
+}
+details.settings summary {
+  cursor: pointer; font: 800 1rem var(--display); padding: 8px 0; color: var(--muted); list-style: none;
+}
+details.settings summary::-webkit-details-marker { display: none; }
+details.settings summary::after { content: " ▾"; }
+details.settings[open] summary::after { content: " ▴"; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px dashed var(--line); }
+.setrow .lbl { font-weight: 800; }
+.setrow small { display: block; color: var(--muted); font-weight: 600; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button {
+  width: 40px; height: 40px; border-radius: 12px; border: 2px solid var(--line);
+  background: var(--sky); color: var(--ink); font: 800 1.3rem var(--display); cursor: pointer;
+}
+.stepper button:disabled { opacity: .4; cursor: default; }
+.stepper output { min-width: 2.2ch; text-align: center; font: 800 1.5rem var(--display); font-variant-numeric: tabular-nums; }
+.seg { display: inline-flex; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink); padding: 8px 12px; font: 800 .9rem var(--body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--leaf); color: var(--paper); }
+
+/* Game card */
+.card {
+  background: var(--paper); border-radius: 22px; box-shadow: var(--shadow);
+  padding: 20px; display: grid; gap: 16px; border: 2px solid var(--line);
+}
+.cardtop { display: flex; align-items: center; gap: 14px; }
+.mystery {
+  width: 72px; height: 72px; flex: none; border-radius: 50%;
+  background: var(--sun-soft); border: 3px dashed var(--sun);
+  display: grid; place-items: center; font: 800 2.6rem/1 var(--display); color: var(--sun);
+}
+.mystery.win { background: var(--leaf-soft); border: 3px solid var(--leaf); color: var(--leaf); font-size: 1.1rem; }
+.mystery.lose { background: var(--sun-soft); border-style: solid; font-size: 1.1rem; }
+.cardtop h2 { margin: 0; font: 800 1.45rem/1.1 var(--display); text-wrap: balance; }
+.cardtop p { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+
+.clues { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.clue {
+  display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start;
+  background: var(--sky); border-radius: 14px; padding: 12px 14px; border: 2px solid transparent;
+}
+.clue .n {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--leaf); color: var(--paper); font: 800 1rem var(--display);
+}
+.clue p { margin: 0; font-weight: 600; font-size: 1.08rem; min-width: 0; padding-top: 3px; }
+.clue.locked { background: transparent; border: 2px dashed var(--line); }
+.clue.locked .n { background: var(--line); color: var(--muted); }
+.clue.locked p { color: var(--muted); font-style: italic; }
+.clue.fresh { animation: pop .45s ease-out; }
+@keyframes pop { from { transform: scale(.96); background: var(--sun-soft); } to { transform: none; } }
+
+/* Blurry photo */
+.photo {
+  position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 0 auto;
+  border-radius: 24px; overflow: hidden; background: var(--sky);
+  border: 3px solid var(--line);
+}
+.photo img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  transform: scale(1.12);
+  transition: filter .9s ease, transform .9s ease;
+  user-select: none; -webkit-user-drag: none; pointer-events: none;
+}
+.photo.clear img { transform: scale(1); }
+.photo.small { width: min(100%, 200px); }
+.photo .msg {
+  position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
+  text-align: center; color: var(--muted); font-weight: 700; font-size: .95rem;
+}
+.meter { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 800; font-size: .85rem; }
+.meter .bar { display: block; flex: 1; height: 10px; border-radius: 999px; background: var(--sky); border: 2px solid var(--line); overflow: hidden; }
+.meter .fill { display: block; height: 100%; background: var(--leaf); border-radius: 999px; transition: width .9s ease; }
+
+.tools { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.lives { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-weight: 800; font-size: .92rem; }
+.lives .dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.dot { width: 16px; height: 16px; border-radius: 50%; background: var(--sun); border: 2px solid var(--sun); }
+.dot.used { background: transparent; border-color: var(--line); }
+
+form.guess { display: flex; gap: 10px; flex-wrap: wrap; }
+form.guess input {
+  flex: 1 1 200px; min-width: 0; font: 700 1.2rem var(--body); padding: 12px 14px;
+  border-radius: 14px; border: 2px solid var(--line); background: var(--sky); color: var(--ink);
+}
+form.guess input:focus { outline: 3px solid var(--sun); outline-offset: 1px; border-color: var(--sun); }
+.btn {
+  border: 0; border-radius: 14px; padding: 12px 20px; cursor: pointer;
+  font: 800 1.1rem var(--display); background: var(--leaf); color: var(--paper);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--leaf) 60%, #000);
+}
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 color-mix(in srgb, var(--leaf) 60%, #000); }
+button:focus-visible, summary:focus-visible { outline: 3px solid var(--sun); outline-offset: 2px; }
+
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.choices button {
+  padding: 14px 10px; border-radius: 14px; border: 2px solid var(--line);
+  background: var(--sky); color: var(--ink); font: 800 1.15rem var(--display); cursor: pointer;
+  min-width: 0; overflow-wrap: anywhere;
+}
+.choices button.wrong { text-decoration: line-through; opacity: .45; cursor: default; }
+
+.feedback { min-height: 1.5em; margin: 0; font-weight: 800; }
+.feedback.no { color: var(--berry); }
+
+.result { display: grid; gap: 12px; text-align: center; }
+.result .big { font: 800 2.4rem/1 var(--display); margin: 0; color: var(--leaf); overflow-wrap: anywhere; }
+.result .meta { margin: 0; color: var(--muted); font-weight: 700; }
+.types { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.type { padding: 2px 12px; border-radius: 999px; background: var(--leaf-soft); color: var(--ink); font-weight: 800; font-size: .85rem; letter-spacing: .04em; text-transform: uppercase; }
+
+.score { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.score div { background: var(--paper); border: 2px solid var(--line); border-radius: 14px; padding: 10px; text-align: center; }
+.score b { display: block; font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.score span { color: var(--muted); font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+
+.loading { color: var(--muted); text-align: center; padding: 30px 0; font-weight: 700; }
+footer { color: var(--muted); font-size: .8rem; text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .clue.fresh { animation: none; }
+  .photo img, .meter .fill { transition: none; }
+}
+@media (max-width: 420px) {
+  h1 { font-size: 1.8rem; }
+  .modes button { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .modes button svg { width: 28px; height: 28px; }
+}
+@media (max-width: 360px) { .choices { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Clue Quest <span>151</span></h1>
+      <p class="tag" id="tagline">Three clues. Can you guess who it is?</p>
+    </div>
+    <button class="iconbtn" id="musicBtn" type="button" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/></svg>
+      <span id="musicLbl">Music</span>
+    </button>
+  </header>
+
+  <nav class="modes" aria-label="Game type">
+    <button type="button" id="typeClues" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span><b>Clues</b><small>Read 3 clues</small></span>
+    </button>
+    <button type="button" id="typePicture" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+      <span><b>Picture</b><small>Blurry picture gets clearer</small></span>
+    </button>
+  </nav>
+
+  <details class="settings" id="settings">
+    <summary>Game settings</summary>
+    <div class="setrow">
+      <div><span class="lbl">Guesses per round</span><small>Each wrong guess opens a clue or sharpens the picture</small></div>
+      <div class="stepper">
+        <button type="button" id="gDown" aria-label="Fewer guesses">−</button>
+        <output id="gVal" aria-live="polite">3</output>
+        <button type="button" id="gUp" aria-label="More guesses">+</button>
+      </div>
+    </div>
+    <div class="setrow">
+      <div><span class="lbl">How to answer</span><small>Picking is easier for new readers</small></div>
+      <div class="seg" role="group" aria-label="Answer mode">
+        <button type="button" id="modePick" aria-pressed="true">Pick from 4</button>
+        <button type="button" id="modeType" aria-pressed="false">Type it</button>
+      </div>
+    </div>
+    <div class="setrow">
+      <div><span class="lbl">Sound effects</span><small>Happy chime when you're right</small></div>
+      <div class="seg" role="group" aria-label="Sound effects">
+        <button type="button" id="sfxOn" aria-pressed="true">On</button>
+        <button type="button" id="sfxOff" aria-pressed="false">Off</button>
+      </div>
+    </div>
+  </details>
+
+  <main class="card" id="card" aria-live="polite">
+    <p class="loading">Loading the field guide…</p>
+  </main>
+
+  <section class="score" aria-label="Score">
+    <div><b id="sRight">0</b><span>Guessed</span></div>
+    <div><b id="sStreak">0</b><span>Streak</span></div>
+    <div><b id="sPlayed">0</b><span>Played</span></div>
+  </section>
+
+  <footer>A fan-made guessing game for kids. Pokémon names and artwork belong to their owners; pictures load from the PokeAPI sprites project. Music is an original tune played live by your browser.</footer>
+</div>
+
+<script>
+  // Filled in by Flask from pokemon_quest.duckdb
+  window.POKEMON_DATA = {{ pokemon | tojson }};
+</script>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- storage helpers ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("cq151:" + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("cq151:" + k, JSON.stringify(v)); } catch {} }
+  };
+
+  const settings = Object.assign({ guesses: 3, mode: "pick", sfx: true, game: "clues" }, store.get("settings", {}));
+  const score = Object.assign({ right: 0, streak: 0, played: 0 }, store.get("score", {}));
+  let seen = store.get("seen", []);
+
+  let POKEMON = [];
+  let round = null;
+
+  const $ = (id) => document.getElementById(id);
+  const card = $("card");
+  const norm = (s) => s.toLowerCase().replace(/♀/g, "f").replace(/♂/g, "m").replace(/[^a-z0-9]/g, "");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // ---------- settings UI ----------
+  function paintSettings() {
+    $("gVal").textContent = settings.guesses;
+    $("gDown").disabled = settings.guesses <= 1;
+    $("gUp").disabled = settings.guesses >= 10;
+    $("modePick").setAttribute("aria-pressed", settings.mode === "pick");
+    $("modeType").setAttribute("aria-pressed", settings.mode === "type");
+    $("sfxOn").setAttribute("aria-pressed", settings.sfx);
+    $("sfxOff").setAttribute("aria-pressed", !settings.sfx);
+    $("typeClues").setAttribute("aria-pressed", settings.game === "clues");
+    $("typePicture").setAttribute("aria-pressed", settings.game === "picture");
+    $("tagline").textContent = settings.game === "picture"
+      ? "A blurry picture. It gets clearer each time you guess."
+      : "Three clues. Can you guess who it is?";
+    store.set("settings", settings);
+  }
+  $("gDown").onclick = () => { settings.guesses = Math.max(1, settings.guesses - 1); paintSettings(); restartIfFresh(); };
+  $("gUp").onclick = () => { settings.guesses = Math.min(10, settings.guesses + 1); paintSettings(); restartIfFresh(); };
+  $("modePick").onclick = () => { settings.mode = "pick"; paintSettings(); if (round && !round.done) render(); };
+  $("modeType").onclick = () => { settings.mode = "type"; paintSettings(); if (round && !round.done) render(); };
+  $("sfxOn").onclick = () => { settings.sfx = true; paintSettings(); };
+  $("sfxOff").onclick = () => { settings.sfx = false; paintSettings(); };
+
+  function setGame(g) {
+    if (settings.game === g) return;
+    settings.game = g; paintSettings();
+    if (!POKEMON.length) return;
+    // switching mid-round starts a fresh mystery so the answer isn't carried over
+    if (round && !round.done && round.wrong.length === 0 && round.extra === 0) { round.game = g; round.shown = 1; render(); }
+    else newRound();
+  }
+  $("typeClues").onclick = () => setGame("clues");
+  $("typePicture").onclick = () => setGame("picture");
+
+  // A guess-count change applies right away if nobody has guessed yet this round.
+  function restartIfFresh() {
+    if (round && !round.done && round.wrong.length === 0) { round.left = settings.guesses; round.total = settings.guesses; render(); }
+  }
+
+  function paintScore() {
+    $("sRight").textContent = score.right;
+    $("sStreak").textContent = score.streak;
+    $("sPlayed").textContent = score.played;
+    store.set("score", score);
+  }
+
+  // ---------- picture blur ----------
+  // Steps run from very blurry to nearly clear across the guesses you have.
+  const BLUR_MAX = 26, BLUR_MIN = 3;
+  function blurFor(r) {
+    if (r.done) return 0;
+    const steps = Math.max(r.total, 2);
+    const used = Math.min(r.wrong.length + r.extra, steps - 1);
+    return Math.round(BLUR_MAX - (BLUR_MAX - BLUR_MIN) * used / (steps - 1));
+  }
+  const clarity = (r) => r.done ? 100 : Math.round(100 * (1 - (blurFor(r) - BLUR_MIN) / (BLUR_MAX - BLUR_MIN + 4)));
+
+  // ---------- game ----------
+  function newRound() {
+    let pool = POKEMON.filter((p) => !seen.includes(p.id));
+    if (pool.length === 0) { seen = []; pool = POKEMON.slice(); }
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    const decoys = shuffle(POKEMON.filter((x) => x.id !== p.id)).slice(0, 3);
+    round = {
+      p, game: settings.game, shown: 1, extra: 0, left: settings.guesses, total: settings.guesses,
+      wrong: [], done: false, won: false, imgFailed: false,
+      choices: shuffle([p, ...decoys]), fresh: 1, msg: ""
+    };
+    render();
+    preloadNext();
+  }
+
+  // warm the browser cache for a likely next picture
+  function preloadNext() {
+    if (settings.game !== "picture") return;
+    const pool = POKEMON.filter((p) => !seen.includes(p.id) && p.id !== round.p.id);
+    if (pool.length) { const im = new Image(); im.src = pool[Math.floor(Math.random() * pool.length)].image_url; }
+  }
+
+  function finish(won) {
+    round.done = true; round.won = won; round.shown = 3;
+    seen.push(round.p.id); store.set("seen", seen);
+    score.played++;
+    if (won) { score.right++; score.streak++; } else { score.streak = 0; }
+    paintScore();
+    sfx(won ? "win" : "lose");
+    render();
+  }
+
+  function submitGuess(text, id) {
+    if (!round || round.done) return;
+    const correct = id != null ? id === round.p.id : round.p.answers.includes(norm(text));
+    if (correct) return finish(true);
+    if (!text.trim() && id == null) return;
+    round.wrong.push(id != null ? id : text.trim());
+    round.left--;
+    if (round.left <= 0) return finish(false);
+    if (round.game === "clues" || round.imgFailed) {
+      if (round.shown < 3) { round.shown++; round.fresh = round.shown; round.msg = "Not quite! Here's another clue."; }
+      else round.msg = "Not quite! Try again.";
+    } else {
+      round.msg = "Not quite! The picture is getting clearer.";
+    }
+    sfx("miss");
+    render();
+  }
+
+  function helpMore() {
+    if (!round || round.done) return;
+    if (round.game === "picture" && !round.imgFailed) {
+      if (blurFor(round) <= BLUR_MIN) return;
+      round.extra++;
+    } else {
+      if (round.shown >= 3) return;
+      round.shown++; round.fresh = round.shown;
+    }
+    round.msg = "";
+    render();
+  }
+
+  function speak() {
+    try {
+      const synth = window.speechSynthesis; if (!synth) return;
+      synth.cancel();
+      const p = round.p;
+      const lines = round.done
+        ? [round.won ? "You got it!" : "Good try!", "It's " + p.name.replace("♀", " girl").replace("♂", " boy") + "."]
+        : [p.clue1, p.clue2, p.clue3].slice(0, round.shown).map((c, i) => "Clue " + (i + 1) + ". " + c);
+      lines.forEach((t) => { const u = new SpeechSynthesisUtterance(t); u.rate = 0.9; u.pitch = 1.1; synth.speak(u); });
+    } catch {}
+  }
+
+  const speakerSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
+  const eyeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+  function photoHtml(r, small) {
+    const blur = blurFor(r);
+    return `<div class="photo ${r.done ? "clear" : ""} ${small ? "small" : ""}" id="photo">
+      <img id="photoImg" src="${esc(r.p.image_url)}" alt="${r.done ? esc(r.p.name) : "Mystery picture"}"
+        draggable="false" style="filter: blur(${blur}px) saturate(${r.done ? 1 : 1.15})">
+    </div>`;
+  }
+
+  function clueList(r) {
+    return [r.p.clue1, r.p.clue2, r.p.clue3].map((c, i) => {
+      const open = i < r.shown;
+      return `<li class="clue ${open ? "" : "locked"} ${open && r.fresh === i + 1 ? "fresh" : ""}">
+        <span class="n">${i + 1}</span>
+        <p>${open ? esc(c) : "Hidden clue. Guess wrong or tap “Another clue” to open it"}</p></li>`;
+    }).join("");
+  }
+
+  function render() {
+    const r = round, p = r.p;
+    const pictureRound = r.game === "picture" && !r.imgFailed;
+
+    const dots = Array.from({ length: r.total }, (_, i) =>
+      `<span class="dot ${i < r.total - r.left ? "used" : ""}"></span>`).join("");
+
+    let top, body;
+    if (!r.done) {
+      top = `<div class="mystery" aria-hidden="true">?</div>
+        <div><h2>Who am I?</h2><p>${pictureRound ? "Look closely at the blurry picture" : "A mystery friend from the first 151"}</p></div>`;
+
+      const puzzle = pictureRound
+        ? `${photoHtml(r)}
+           <div class="meter"><span>Blurry</span><span class="bar"><span class="fill" style="width:${clarity(r)}%"></span></span><span>Clear</span></div>`
+        : `<ol class="clues">${clueList(r)}</ol>`;
+
+      const helpDisabled = pictureRound ? blurFor(r) <= BLUR_MIN : r.shown >= 3;
+      const tools = pictureRound
+        ? `<button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>${eyeSvg} Make it clearer</button>`
+        : `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
+           <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Another clue</button>`;
+
+      const answer = settings.mode === "pick"
+        ? `<div class="choices">${r.choices.map((c) => {
+            const w = r.wrong.includes(c.id);
+            return `<button type="button" data-id="${c.id}" class="${w ? "wrong" : ""}" ${w ? "disabled" : ""}>${esc(c.name)}</button>`;
+          }).join("")}</div>`
+        : `<form class="guess" id="guessForm" autocomplete="off">
+            <input id="guessInput" name="guess" aria-label="Your guess" placeholder="Type a name…" autocapitalize="words" spellcheck="false" enterkeyhint="go">
+            <button class="btn" type="submit">Guess</button>
+          </form>`;
+
+      body = `${puzzle}
+        <div class="tools">${tools}</div>
+        <div class="lives"><span>Guesses left: ${r.left}</span><span class="dots" aria-hidden="true">${dots}</span></div>
+        ${answer}
+        <p class="feedback ${r.msg ? "no" : ""}">${esc(r.msg)}</p>`;
+    } else {
+      top = `<div class="mystery ${r.won ? "win" : "lose"}" aria-hidden="true">#${p.id}</div>
+        <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? "Great detective work." : "Here's who it was."}</p></div>`;
+      body = `
+        ${r.imgFailed ? "" : photoHtml(r, r.game === "clues")}
+        <div class="result">
+          <p class="big">${esc(p.name)}</p>
+          <div class="types">${[p.type1, p.type2].filter(Boolean).map((t) => `<span class="type">${esc(t)}</span>`).join("")}</div>
+          <p class="meta">Number ${p.id} of 151</p>
+        </div>
+        ${r.game === "clues" || r.imgFailed ? `<ol class="clues">${clueList(r)}</ol>` : ""}
+        <div class="tools">
+          <button class="btn" type="button" id="againBtn">Next mystery</button>
+          <button class="iconbtn" type="button" id="readBtn">${speakerSvg} Say the answer</button>
+        </div>`;
+    }
+    card.innerHTML = `<div class="cardtop">${top}</div>${body}`;
+    r.fresh = 0;
+
+    // If the picture can't load (offline, blocked), fall back to clues for this round.
+    const img = $("photoImg");
+    if (img) img.onerror = () => {
+      if (round !== r) return;
+      r.imgFailed = true;
+      if (!r.done) r.msg = "The picture couldn't load, so here are clues instead.";
+      render();
+    };
+
+    const rb = $("readBtn"); if (rb) rb.onclick = speak;
+    if (!r.done) {
+      $("moreBtn").onclick = helpMore;
+      if (settings.mode === "pick") {
+        card.querySelectorAll(".choices button").forEach((b) => b.onclick = () => submitGuess("", Number(b.dataset.id)));
+      } else {
+        const f = $("guessForm"), inp = $("guessInput");
+        f.onsubmit = (e) => { e.preventDefault(); const v = inp.value; inp.value = ""; submitGuess(v); };
+        if (r.wrong.length) inp.focus();
+      }
+    } else {
+      $("againBtn").onclick = newRound;
+      $("againBtn").focus({ preventScroll: true });
+    }
+  }
+
+  // ---------- audio ----------
+  let ctx = null, master = null, musicBus = null, sfxBus = null, musicOn = false, timer = null, nextTime = 0, step = 0;
+
+  function ensureAudio() {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
+    // soft room reverb from generated noise
+    const len = ctx.sampleRate * 2.4, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
+    const verb = ctx.createConvolver(); verb.buffer = ir;
+    const wet = ctx.createGain(); wet.gain.value = 0.35; verb.connect(wet).connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = 0;
+    musicBus.connect(master); musicBus.connect(verb);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.5; sfxBus.connect(master); sfxBus.connect(verb);
+    return ctx;
+  }
+
+  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+  // music-box pluck: fundamental + bright partial, quick attack, long fade
+  function pluck(bus, midi, t, vol = 0.18, len = 1.8) {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    g.connect(bus);
+    [[1, 1], [4.01, 0.18], [2, 0.25]].forEach(([mult, amp]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = "sine"; o.frequency.value = hz(midi) * mult; og.gain.value = amp;
+      o.connect(og).connect(g); o.start(t); o.stop(t + len + 0.05);
+    });
+  }
+
+  // warm pad underneath each bar
+  function pad(midis, t, dur) {
+    const g = ctx.createGain(), f = ctx.createBiquadFilter();
+    f.type = "lowpass"; f.frequency.value = 900;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.035, t + dur * 0.4);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur * 1.05);
+    f.connect(g).connect(musicBus);
+    midis.forEach((m) => { const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = hz(m); o.detune.value = (Math.random() - .5) * 8; o.connect(f); o.start(t); o.stop(t + dur * 1.1); });
+  }
+
+  // Original gentle waltz in F major, 3/4. [root, quality] per bar; melody as [midi, beats].
+  const CHORDS = [[53,"M"],[50,"m"],[46,"M"],[48,"M"],[53,"M"],[45,"m"],[46,"M"],[48,"M"],
+                  [50,"m"],[46,"M"],[53,"M"],[48,"M"],[46,"M"],[48,"M"],[53,"M"],[53,"M"]];
+  const MELODY = [
+    [[72,1],[69,1],[65,1]], [[74,2],[72,1]], [[70,1],[69,1],[67,1]], [[67,3]],
+    [[69,1],[72,1],[77,1]], [[76,2],[72,1]], [[74,1],[72,1],[70,1]], [[72,3]],
+    [[74,1],[77,1],[74,1]], [[72,2],[70,1]], [[69,1],[72,1],[69,1]], [[67,2],[64,1]],
+    [[65,1],[67,1],[69,1]], [[70,1],[72,1],[67,1]], [[65,3]], [[0,3]]
+  ];
+  const BEAT = 60 / 88;
+
+  function scheduleBar(bar, t) {
+    const [root, q] = CHORDS[bar];
+    const third = root + (q === "M" ? 4 : 3), fifth = root + 7;
+    pad([root, third + 12, fifth], t, BEAT * 3);
+    pluck(musicBus, root - 12, t, 0.13, 2.2);
+    pluck(musicBus, third + 12, t + BEAT, 0.07, 1.2);
+    pluck(musicBus, fifth + 12, t + BEAT * 2, 0.07, 1.2);
+    let bt = t;
+    MELODY[bar].forEach(([m, beats]) => { if (m) pluck(musicBus, m, bt, 0.16, 1.4 + beats * 0.5); bt += beats * BEAT; });
+    if (bar === 15) pluck(musicBus, 77, t + BEAT * 1.5, 0.05, 2.5);
+  }
+
+  function tick() {
+    while (nextTime < ctx.currentTime + 0.6) {
+      scheduleBar(step % 16, nextTime);
+      nextTime += BEAT * 3; step++;
+    }
+  }
+
+  function setMusic(on) {
+    if (!ensureAudio()) return;
+    ctx.resume();
+    musicOn = on;
+    const now = ctx.currentTime;
+    musicBus.gain.cancelScheduledValues(now);
+    musicBus.gain.setValueAtTime(musicBus.gain.value, now);
+    if (on) {
+      musicBus.gain.linearRampToValueAtTime(0.9, now + 1.2);
+      if (!timer) { nextTime = now + 0.1; step = 0; tick(); timer = setInterval(tick, 200); }
+    } else {
+      musicBus.gain.linearRampToValueAtTime(0, now + 0.8);
+      setTimeout(() => { if (!musicOn && timer) { clearInterval(timer); timer = null; } }, 900);
+    }
+    $("musicBtn").setAttribute("aria-pressed", on);
+    $("musicLbl").textContent = on ? "Music on" : "Music";
+  }
+  $("musicBtn").onclick = () => setMusic(!musicOn);
+
+  function sfx(kind) {
+    if (!settings.sfx || !ensureAudio()) return;
+    ctx.resume();
+    const t = ctx.currentTime + 0.02;
+    if (kind === "win") [72, 76, 79, 84].forEach((m, i) => pluck(sfxBus, m, t + i * 0.11, 0.25, 1.6));
+    else if (kind === "miss") [67, 64].forEach((m, i) => pluck(sfxBus, m, t + i * 0.14, 0.16, 0.9));
+    else [65, 64, 60].forEach((m, i) => pluck(sfxBus, m, t + i * 0.18, 0.16, 1.2));
+  }
+
+  // ---------- boot ----------
+  paintSettings(); paintScore();
+
+  async function load() {
+    if (Array.isArray(window.POKEMON_DATA) && window.POKEMON_DATA.length) return window.POKEMON_DATA;
+    throw new Error("no data from the server");
+  }
+
+  load().then((rows) => { POKEMON = rows; newRound(); })
+    .catch((e) => { card.innerHTML = `<p class="loading">Couldn't load the Pokémon list (${esc(e.message)}). Refresh to try again.</p>`; });
+})();
+</script>
+</body>
+</html>
