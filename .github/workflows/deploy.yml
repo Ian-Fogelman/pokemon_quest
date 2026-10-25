@@ -1,0 +1,71 @@
+name: Deploy to PythonAnywhere
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+jobs:
+  deploy-and-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Upload files to PythonAnywhere
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+        run: |
+          DEPLOY_PATH="/mywebapps/pokemon_quest"
+          API_BASE="https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}"
+
+          upload_file() {
+            local local_path="$1"
+            local remote_path="${DEPLOY_PATH}/$1"
+            echo "Uploading ${local_path} -> ${remote_path}"
+            curl -s -X POST \
+              -H "Authorization: Token ${PA_API_TOKEN}" \
+              -F "content=@${local_path}" \
+              "${API_BASE}/files/path${remote_path}/"
+          }
+
+          upload_file "pokemon_quest.html"
+          upload_file "pokemon_quest.duckdb"
+
+      - name: Reload PythonAnywhere web app
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+        run: |
+          DOMAIN="${PA_USERNAME}.pythonanywhere.com"
+          echo "Reloading web app at ${DOMAIN}"
+          curl -s -X POST \
+            -H "Authorization: Token ${PA_API_TOKEN}" \
+            "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/${DOMAIN}/reload/"
+
+      - name: Open Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          title: "Deploy: ${{ github.ref_name }} → main"
+          body: |
+            ## Deployment Summary
+
+            Branch `${{ github.ref_name }}` has been deployed to PythonAnywhere for review.
+
+            **Live preview:** https://${{ secrets.PA_USERNAME }}.pythonanywhere.com
+
+            ### Changed files
+            - `pokemon_quest.html`
+            - `pokemon_quest.duckdb`
+
+            ### Checklist
+            - [ ] Tested on PythonAnywhere preview
+            - [ ] No regressions
+          draft: false
