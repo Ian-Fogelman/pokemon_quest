@@ -74,7 +74,7 @@ h1 span { color: var(--sun); -webkit-text-stroke: 1px var(--ink); paint-order: s
 .iconbtn svg { width: 18px; height: 18px; flex: none; }
 
 /* Game-type tabs */
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
 .modes button {
   display: flex; align-items: center; gap: 12px; text-align: left;
   padding: 12px 14px; border-radius: 18px; cursor: pointer;
@@ -165,6 +165,40 @@ details.settings[open] summary::after { content: " ▴"; }
 .meter .bar { display: block; flex: 1; height: 10px; border-radius: 999px; background: var(--sky); border: 2px solid var(--line); overflow: hidden; }
 .meter .fill { display: block; height: 100%; background: var(--leaf); border-radius: 999px; transition: width .9s ease; }
 
+/* Silhouette mode */
+.sil-wrap {
+  position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 0 auto;
+  border-radius: 24px; overflow: hidden;
+  background: radial-gradient(ellipse at 60% 35%, #ffe97a 0%, #f3bd47 60%, #e8a820 100%);
+  border: 3px solid var(--sun);
+}
+.sil-wrap img {
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  filter: brightness(0); transform: scale(1.1);
+  user-select: none; -webkit-user-drag: none; pointer-events: none;
+}
+.sil-wrap.revealed img {
+  animation: sil-reveal .95s cubic-bezier(.2,.8,.4,1) forwards;
+}
+@keyframes sil-reveal {
+  0%   { filter: brightness(0); transform: scale(1.1); }
+  18%  { filter: brightness(10) saturate(0); transform: scale(1.15); }
+  45%  { filter: brightness(2.5) saturate(2.2); transform: scale(1.04); }
+  100% { filter: brightness(1) saturate(1); transform: scale(1); }
+}
+.sil-wrap .wtp {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.72));
+  color: #fff; text-align: center;
+  font: 800 .82rem var(--display); letter-spacing: .07em; text-transform: uppercase;
+  padding: 28px 8px 10px;
+}
+.sil-wrap .wtp.its {
+  font-size: 1.1rem; letter-spacing: .03em; text-transform: none;
+  background: linear-gradient(transparent, rgba(0,0,0,.85));
+  padding-bottom: 12px;
+}
+
 .tools { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .lives { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-weight: 800; font-size: .92rem; }
@@ -214,6 +248,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 @media (prefers-reduced-motion: reduce) {
   .clue.fresh { animation: none; }
   .photo img, .meter .fill { transition: none; }
+  .sil-wrap.revealed img { animation: none; filter: brightness(1) saturate(1); transform: scale(1); }
 }
 @media (max-width: 420px) {
   h1 { font-size: 1.8rem; }
@@ -244,6 +279,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     <button type="button" id="typePicture" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
       <span><b>Picture</b><small>Blurry picture gets clearer</small></span>
+    </button>
+    <button type="button" id="typeSilhouette" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 3-2 5.5-5 6.7V17h2a1 1 0 0 1 0 2h-2v1a1 1 0 0 1-2 0v-1H10a1 1 0 0 1 0-2h2v-1.3C9 14.5 7 12 7 9a7 7 0 0 1 5-6.7" fill="currentColor" stroke="none"/><ellipse cx="12" cy="21" rx="4" ry="1.2" fill="currentColor" stroke="none" opacity=".3"/></svg>
+      <span><b>Silhouette</b><small>Who's that Pokémon?</small></span>
     </button>
   </nav>
 
@@ -324,8 +363,11 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     $("sfxOff").setAttribute("aria-pressed", !settings.sfx);
     $("typeClues").setAttribute("aria-pressed", settings.game === "clues");
     $("typePicture").setAttribute("aria-pressed", settings.game === "picture");
+    $("typeSilhouette").setAttribute("aria-pressed", settings.game === "silhouette");
     $("tagline").textContent = settings.game === "picture"
       ? "A blurry picture. It gets clearer each time you guess."
+      : settings.game === "silhouette"
+      ? "Who's that Pokémon? Guess the silhouette!"
       : "Three clues. Can you guess who it is?";
     store.set("settings", settings);
   }
@@ -346,6 +388,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   }
   $("typeClues").onclick = () => setGame("clues");
   $("typePicture").onclick = () => setGame("picture");
+  $("typeSilhouette").onclick = () => setGame("silhouette");
 
   // A guess-count change applies right away if nobody has guessed yet this round.
   function restartIfFresh() {
@@ -377,7 +420,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     const p = pool[Math.floor(Math.random() * pool.length)];
     const decoys = shuffle(POKEMON.filter((x) => x.id !== p.id)).slice(0, 3);
     round = {
-      p, game: settings.game, shown: 1, extra: 0, left: settings.guesses, total: settings.guesses,
+      p, game: settings.game, shown: settings.game === "silhouette" ? 0 : 1, extra: 0, left: settings.guesses, total: settings.guesses,
       wrong: [], done: false, won: false, imgFailed: false,
       choices: shuffle([p, ...decoys]), fresh: 1, msg: ""
     };
@@ -387,7 +430,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   // warm the browser cache for a likely next picture
   function preloadNext() {
-    if (settings.game !== "picture") return;
+    if (settings.game !== "picture" && settings.game !== "silhouette") return;
     const pool = POKEMON.filter((p) => !seen.includes(p.id) && p.id !== round.p.id);
     if (pool.length) { const im = new Image(); im.src = pool[Math.floor(Math.random() * pool.length)].image_url; }
   }
@@ -410,8 +453,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     round.wrong.push(id != null ? id : text.trim());
     round.left--;
     if (round.left <= 0) return finish(false);
-    if (round.game === "clues" || round.imgFailed) {
-      if (round.shown < 3) { round.shown++; round.fresh = round.shown; round.msg = "Not quite! Here's another clue."; }
+    if (round.game === "clues" || round.game === "silhouette" || round.imgFailed) {
+      if (round.shown < 3) { round.shown++; round.fresh = round.shown; round.msg = "Not quite! Here's a clue."; }
       else round.msg = "Not quite! Try again.";
     } else {
       round.msg = "Not quite! The picture is getting clearer.";
@@ -456,6 +499,18 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     </div>`;
   }
 
+  function silhouetteHtml(r) {
+    const revealed = r.done;
+    const label = revealed
+      ? `<div class="wtp its">It's ${esc(r.p.name)}!</div>`
+      : `<div class="wtp">Who's that Pokémon?</div>`;
+    return `<div class="sil-wrap ${revealed ? "revealed" : ""}" id="photo">
+      <img id="photoImg" src="${esc(r.p.image_url)}" alt="${revealed ? esc(r.p.name) : "Mystery silhouette"}"
+        draggable="false">
+      ${label}
+    </div>`;
+  }
+
   function clueList(r) {
     return [r.p.clue1, r.p.clue2, r.p.clue3].map((c, i) => {
       const open = i < r.shown;
@@ -468,6 +523,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   function render() {
     const r = round, p = r.p;
     const pictureRound = r.game === "picture" && !r.imgFailed;
+    const silhouetteRound = r.game === "silhouette" && !r.imgFailed;
 
     const dots = Array.from({ length: r.total }, (_, i) =>
       `<span class="dot ${i < r.total - r.left ? "used" : ""}"></span>`).join("");
@@ -475,16 +531,21 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     let top, body;
     if (!r.done) {
       top = `<div class="mystery" aria-hidden="true">?</div>
-        <div><h2>Who am I?</h2><p>${pictureRound ? "Look closely at the blurry picture" : "A mystery friend from the first 151"}</p></div>`;
+        <div><h2>Who am I?</h2><p>${pictureRound ? "Look closely at the blurry picture" : silhouetteRound ? "Guess the Pokémon from the silhouette" : "A mystery friend from the first 151"}</p></div>`;
 
       const puzzle = pictureRound
         ? `${photoHtml(r)}
            <div class="meter"><span>Blurry</span><span class="bar"><span class="fill" style="width:${clarity(r)}%"></span></span><span>Clear</span></div>`
+        : silhouetteRound
+        ? `${silhouetteHtml(r)}<ol class="clues">${clueList(r)}</ol>`
         : `<ol class="clues">${clueList(r)}</ol>`;
 
       const helpDisabled = pictureRound ? blurFor(r) <= BLUR_MIN : r.shown >= 3;
       const tools = pictureRound
         ? `<button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>${eyeSvg} Make it clearer</button>`
+        : silhouetteRound
+        ? `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
+           <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Get a clue</button>`
         : `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
            <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Another clue</button>`;
 
@@ -507,13 +568,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       top = `<div class="mystery ${r.won ? "win" : "lose"}" aria-hidden="true">#${p.id}</div>
         <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? "Great detective work." : "Here's who it was."}</p></div>`;
       body = `
-        ${r.imgFailed ? "" : photoHtml(r, r.game === "clues")}
+        ${r.imgFailed ? "" : r.game === "silhouette" ? silhouetteHtml(r) : photoHtml(r, r.game === "clues")}
         <div class="result">
           <p class="big">${esc(p.name)}</p>
           <div class="types">${[p.type1, p.type2].filter(Boolean).map((t) => `<span class="type">${esc(t)}</span>`).join("")}</div>
           <p class="meta">Number ${p.id} of 151</p>
         </div>
-        ${r.game === "clues" || r.imgFailed ? `<ol class="clues">${clueList(r)}</ol>` : ""}
+        ${r.game === "clues" || r.game === "silhouette" || r.imgFailed ? `<ol class="clues">${clueList(r)}</ol>` : ""}
         <div class="tools">
           <button class="btn" type="button" id="againBtn">Next mystery</button>
           <button class="iconbtn" type="button" id="readBtn">${speakerSvg} Say the answer</button>
