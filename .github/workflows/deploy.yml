@@ -3,7 +3,7 @@ name: Deploy to PythonAnywhere
 on:
   push:
     branches-ignore:
-      - main
+      - master
 
 jobs:
   deploy-and-pr:
@@ -21,12 +21,12 @@ jobs:
           PA_USERNAME: ${{ secrets.PA_USERNAME }}
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
         run: |
-          DEPLOY_PATH="/mywebapps/pokemon_quest"
+          APP_ROOT="/home/IanFogelman/family_fun_app"
           API_BASE="https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}"
 
           upload_file() {
             local local_path="$1"
-            local remote_path="${DEPLOY_PATH}/$1"
+            local remote_path="$2"
             echo "Uploading ${local_path} -> ${remote_path}"
             curl -s -X POST \
               -H "Authorization: Token ${PA_API_TOKEN}" \
@@ -34,8 +34,10 @@ jobs:
               "${API_BASE}/files/path${remote_path}/"
           }
 
-          upload_file "pokemon_quest.html"
-          upload_file "pokemon_quest.duckdb"
+          # HTML goes into Flask's templates folder
+          upload_file "pokemon_quest.html" "${APP_ROOT}/templates/pokemon_quest.html"
+          # DB goes into the app root (where app.py expects it)
+          upload_file "pokemon_quest.duckdb" "${APP_ROOT}/pokemon_quest.duckdb"
 
       - name: Reload PythonAnywhere web app
         env:
@@ -49,23 +51,31 @@ jobs:
             "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/${DOMAIN}/reload/"
 
       - name: Open Pull Request
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          title: "Deploy: ${{ github.ref_name }} → main"
-          body: |
-            ## Deployment Summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Skip if PR already exists for this branch
+          EXISTING=$(gh pr list --repo ${{ github.repository }} --head ${{ github.ref_name }} --base master --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already exists for this branch, skipping."
+            exit 0
+          fi
 
-            Branch `${{ github.ref_name }}` has been deployed to PythonAnywhere for review.
+          gh pr create \
+            --repo ${{ github.repository }} \
+            --base master \
+            --head ${{ github.ref_name }} \
+            --title "Deploy: ${{ github.ref_name }} → master" \
+            --body "## Deployment Summary
 
-            **Live preview:** https://${{ secrets.PA_USERNAME }}.pythonanywhere.com
+          Branch \`${{ github.ref_name }}\` has been deployed to PythonAnywhere for review.
 
-            ### Changed files
-            - `pokemon_quest.html`
-            - `pokemon_quest.duckdb`
+          **Live preview:** https://${{ secrets.PA_USERNAME }}.pythonanywhere.com/pokemon-quest
 
-            ### Checklist
-            - [ ] Tested on PythonAnywhere preview
-            - [ ] No regressions
-          draft: false
+          ### Changed files
+          - \`pokemon_quest.html\`
+          - \`pokemon_quest.duckdb\`
+
+          ### Checklist
+          - [ ] Tested on PythonAnywhere preview
+          - [ ] No regressions"
