@@ -3,7 +3,7 @@ name: Deploy to PythonAnywhere
 on:
   push:
     branches-ignore:
-      - main
+      - master
 
 jobs:
   deploy-and-pr:
@@ -52,7 +52,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
+          base: master
           title: "Deploy: ${{ github.ref_name }} → main"
           body: |
             ## Deployment Summary
