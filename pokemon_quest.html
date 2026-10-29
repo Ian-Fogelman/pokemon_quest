@@ -199,6 +199,35 @@ details.settings[open] summary::after { content: " ▴"; }
   padding-bottom: 12px;
 }
 
+/* Cry mode */
+.cry-card {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 20px 0;
+}
+.cry-btn {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: var(--leaf); border: 0; cursor: pointer;
+  display: grid; place-items: center; color: var(--paper);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--leaf) 60%, #000);
+  transition: transform .1s, box-shadow .1s;
+  position: relative;
+}
+.cry-btn:active { transform: scale(.95); box-shadow: 0 2px 0 color-mix(in srgb, var(--leaf) 60%, #000); }
+.cry-btn svg { width: 46px; height: 46px; }
+.cry-btn.playing::before, .cry-btn.playing::after {
+  content: ''; position: absolute; border-radius: 50%;
+  border: 3px solid var(--leaf); animation: cry-ring 1.4s ease-out infinite;
+}
+.cry-btn.playing::before { inset: -10px; }
+.cry-btn.playing::after { inset: -22px; animation-delay: .5s; }
+@keyframes cry-ring {
+  0%   { opacity: .7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+.cry-label { color: var(--muted); font: 800 .82rem var(--body); letter-spacing: .07em; text-transform: uppercase; }
+.cry-btn.small-btn { width: 52px; height: 52px; box-shadow: none; }
+.cry-btn.small-btn svg { width: 26px; height: 26px; }
+
 .tools { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .lives { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--muted); font-weight: 800; font-size: .92rem; }
@@ -249,6 +278,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   .clue.fresh { animation: none; }
   .photo img, .meter .fill { transition: none; }
   .sil-wrap.revealed img { animation: none; filter: brightness(1) saturate(1); transform: scale(1); }
+  .cry-btn.playing::before, .cry-btn.playing::after { animation: none; }
 }
 @media (max-width: 420px) {
   h1 { font-size: 1.8rem; }
@@ -283,6 +313,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     <button type="button" id="typeSilhouette" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 3-2 5.5-5 6.7V17h2a1 1 0 0 1 0 2h-2v1a1 1 0 0 1-2 0v-1H10a1 1 0 0 1 0-2h2v-1.3C9 14.5 7 12 7 9a7 7 0 0 1 5-6.7" fill="currentColor" stroke="none"/><ellipse cx="12" cy="21" rx="4" ry="1.2" fill="currentColor" stroke="none" opacity=".3"/></svg>
       <span><b>Silhouette</b><small>Who's that Pokémon?</small></span>
+    </button>
+    <button type="button" id="typeCry" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+      <span><b>Cry</b><small>Guess from the sound</small></span>
     </button>
   </nav>
 
@@ -345,6 +379,16 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   let POKEMON = [];
   let round = null;
+  let currentCry = null;
+
+  function playCry(id, onEnd) {
+    if (currentCry) { currentCry.pause(); currentCry = null; }
+    const audio = new Audio(`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`);
+    currentCry = audio;
+    if (onEnd) audio.onended = onEnd;
+    audio.play().catch(() => {});
+    return audio;
+  }
 
   const $ = (id) => document.getElementById(id);
   const card = $("card");
@@ -364,10 +408,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     $("typeClues").setAttribute("aria-pressed", settings.game === "clues");
     $("typePicture").setAttribute("aria-pressed", settings.game === "picture");
     $("typeSilhouette").setAttribute("aria-pressed", settings.game === "silhouette");
+    $("typeCry").setAttribute("aria-pressed", settings.game === "cry");
     $("tagline").textContent = settings.game === "picture"
       ? "A blurry picture. It gets clearer each time you guess."
       : settings.game === "silhouette"
       ? "Who's that Pokémon? Guess the silhouette!"
+      : settings.game === "cry"
+      ? "Hear the cry. Can you name the Pokémon?"
       : "Three clues. Can you guess who it is?";
     store.set("settings", settings);
   }
@@ -383,12 +430,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     settings.game = g; paintSettings();
     if (!POKEMON.length) return;
     // switching mid-round starts a fresh mystery so the answer isn't carried over
-    if (round && !round.done && round.wrong.length === 0 && round.extra === 0) { round.game = g; round.shown = 1; render(); }
+    if (round && !round.done && round.wrong.length === 0 && round.extra === 0) { round.game = g; round.shown = (g === "silhouette" || g === "cry") ? 0 : 1; render(); }
     else newRound();
   }
   $("typeClues").onclick = () => setGame("clues");
   $("typePicture").onclick = () => setGame("picture");
   $("typeSilhouette").onclick = () => setGame("silhouette");
+  $("typeCry").onclick = () => setGame("cry");
 
   // A guess-count change applies right away if nobody has guessed yet this round.
   function restartIfFresh() {
@@ -415,12 +463,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   // ---------- game ----------
   function newRound() {
+    if (currentCry) { currentCry.pause(); currentCry = null; }
     let pool = POKEMON.filter((p) => !seen.includes(p.id));
     if (pool.length === 0) { seen = []; pool = POKEMON.slice(); }
     const p = pool[Math.floor(Math.random() * pool.length)];
     const decoys = shuffle(POKEMON.filter((x) => x.id !== p.id)).slice(0, 3);
     round = {
-      p, game: settings.game, shown: settings.game === "silhouette" ? 0 : 1, extra: 0, left: settings.guesses, total: settings.guesses,
+      p, game: settings.game, shown: (settings.game === "silhouette" || settings.game === "cry") ? 0 : 1, extra: 0, left: settings.guesses, total: settings.guesses,
       wrong: [], done: false, won: false, imgFailed: false,
       choices: shuffle([p, ...decoys]), fresh: 1, msg: ""
     };
@@ -453,7 +502,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     round.wrong.push(id != null ? id : text.trim());
     round.left--;
     if (round.left <= 0) return finish(false);
-    if (round.game === "clues" || round.game === "silhouette" || round.imgFailed) {
+    if (round.game === "clues" || round.game === "silhouette" || round.game === "cry" || round.imgFailed) {
       if (round.shown < 3) { round.shown++; round.fresh = round.shown; round.msg = "Not quite! Here's a clue."; }
       else round.msg = "Not quite! Try again.";
     } else {
@@ -511,6 +560,15 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     </div>`;
   }
 
+  const crySvgLg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>';
+
+  function cryHtml() {
+    return `<div class="cry-card">
+      <button class="cry-btn" id="cryBtn" type="button" aria-label="Play Pokémon cry">${crySvgLg}</button>
+      <span class="cry-label">Tap to hear the cry</span>
+    </div>`;
+  }
+
   function clueList(r) {
     return [r.p.clue1, r.p.clue2, r.p.clue3].map((c, i) => {
       const open = i < r.shown;
@@ -524,20 +582,27 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     const r = round, p = r.p;
     const pictureRound = r.game === "picture" && !r.imgFailed;
     const silhouetteRound = r.game === "silhouette" && !r.imgFailed;
+    const cryRound = r.game === "cry";
 
     const dots = Array.from({ length: r.total }, (_, i) =>
       `<span class="dot ${i < r.total - r.left ? "used" : ""}"></span>`).join("");
 
     let top, body;
     if (!r.done) {
+      const subhead = pictureRound ? "Look closely at the blurry picture"
+        : silhouetteRound ? "Guess the Pokémon from the silhouette"
+        : cryRound ? "Listen carefully — then choose or type"
+        : "A mystery friend from the first 151";
       top = `<div class="mystery" aria-hidden="true">?</div>
-        <div><h2>Who am I?</h2><p>${pictureRound ? "Look closely at the blurry picture" : silhouetteRound ? "Guess the Pokémon from the silhouette" : "A mystery friend from the first 151"}</p></div>`;
+        <div><h2>Who am I?</h2><p>${subhead}</p></div>`;
 
       const puzzle = pictureRound
         ? `${photoHtml(r)}
            <div class="meter"><span>Blurry</span><span class="bar"><span class="fill" style="width:${clarity(r)}%"></span></span><span>Clear</span></div>`
         : silhouetteRound
         ? `${silhouetteHtml(r)}<ol class="clues">${clueList(r)}</ol>`
+        : cryRound
+        ? `${cryHtml()}<ol class="clues">${clueList(r)}</ol>`
         : `<ol class="clues">${clueList(r)}</ol>`;
 
       const helpDisabled = pictureRound ? blurFor(r) <= BLUR_MIN : r.shown >= 3;
@@ -546,6 +611,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
         : silhouetteRound
         ? `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
            <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Get a clue</button>`
+        : cryRound
+        ? `<button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Get a clue</button>`
         : `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
            <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Another clue</button>`;
 
@@ -568,16 +635,18 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       top = `<div class="mystery ${r.won ? "win" : "lose"}" aria-hidden="true">#${p.id}</div>
         <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? "Great detective work." : "Here's who it was."}</p></div>`;
       body = `
-        ${r.imgFailed ? "" : r.game === "silhouette" ? silhouetteHtml(r) : photoHtml(r, r.game === "clues")}
+        ${r.imgFailed ? "" : r.game === "silhouette" ? silhouetteHtml(r) : photoHtml(r, r.game === "clues" || r.game === "cry")}
         <div class="result">
           <p class="big">${esc(p.name)}</p>
           <div class="types">${[p.type1, p.type2].filter(Boolean).map((t) => `<span class="type">${esc(t)}</span>`).join("")}</div>
           <p class="meta">Number ${p.id} of 151</p>
         </div>
-        ${r.game === "clues" || r.game === "silhouette" || r.imgFailed ? `<ol class="clues">${clueList(r)}</ol>` : ""}
+        ${r.game === "clues" || r.game === "silhouette" || r.game === "cry" || r.imgFailed ? `<ol class="clues">${clueList(r)}</ol>` : ""}
         <div class="tools">
           <button class="btn" type="button" id="againBtn">Next mystery</button>
-          <button class="iconbtn" type="button" id="readBtn">${speakerSvg} Say the answer</button>
+          ${r.game === "cry"
+            ? `<button class="cry-btn small-btn" id="replayCryBtn" type="button" aria-label="Replay cry">${crySvgLg}</button>`
+            : `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Say the answer</button>`}
         </div>`;
     }
     card.innerHTML = `<div class="cardtop">${top}</div>${body}`;
@@ -593,6 +662,21 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     };
 
     const rb = $("readBtn"); if (rb) rb.onclick = speak;
+
+    // Cry mode button bindings
+    const cryBtn = $("cryBtn");
+    if (cryBtn) {
+      cryBtn.onclick = () => {
+        cryBtn.classList.add("playing");
+        playCry(r.p.id, () => cryBtn.classList.remove("playing"));
+      };
+    }
+    const replayCryBtn = $("replayCryBtn");
+    if (replayCryBtn) replayCryBtn.onclick = () => playCry(r.p.id);
+
+    // Auto-play cry on reveal
+    if (r.done && r.game === "cry") playCry(r.p.id);
+
     if (!r.done) {
       $("moreBtn").onclick = helpMore;
       if (settings.mode === "pick") {
