@@ -74,16 +74,16 @@ h1 span { color: var(--sun); -webkit-text-stroke: 1px var(--ink); paint-order: s
 .iconbtn svg { width: 18px; height: 18px; flex: none; }
 
 /* Game-type tabs */
-.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .modes button {
-  display: flex; align-items: center; gap: 12px; text-align: left;
-  padding: 12px 14px; border-radius: 18px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+  padding: 12px 8px; border-radius: 16px; cursor: pointer;
   border: 3px solid var(--line); background: var(--paper); color: var(--ink);
   min-width: 0;
 }
-.modes button svg { width: 34px; height: 34px; flex: none; color: var(--muted); }
-.modes b { display: block; font: 800 1.2rem/1.1 var(--display); }
-.modes small { display: block; color: var(--muted); font-weight: 700; font-size: .8rem; line-height: 1.25; }
+.modes button svg { width: 28px; height: 28px; flex: none; color: var(--muted); }
+.modes b { display: block; font: 800 1rem/1.1 var(--display); }
+.modes small { display: block; color: var(--muted); font-weight: 700; font-size: .72rem; line-height: 1.25; }
 .modes button[aria-pressed="true"] { border-color: var(--leaf); background: var(--leaf-soft); }
 .modes button[aria-pressed="true"] svg { color: var(--leaf); }
 
@@ -143,27 +143,16 @@ details.settings[open] summary::after { content: " ▴"; }
 .clue.fresh { animation: pop .45s ease-out; }
 @keyframes pop { from { transform: scale(.96); background: var(--sun-soft); } to { transform: none; } }
 
-/* Blurry photo */
+/* Revealed photo (result screen) */
 .photo {
-  position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 0 auto;
+  position: relative; width: min(100%, 200px); aspect-ratio: 1; margin: 0 auto;
   border-radius: 24px; overflow: hidden; background: var(--sky);
   border: 3px solid var(--line);
 }
 .photo img {
   width: 100%; height: 100%; object-fit: contain; display: block;
-  transform: scale(1.12);
-  transition: filter .9s ease, transform .9s ease;
   user-select: none; -webkit-user-drag: none; pointer-events: none;
 }
-.photo.clear img { transform: scale(1); }
-.photo.small { width: min(100%, 200px); }
-.photo .msg {
-  position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
-  text-align: center; color: var(--muted); font-weight: 700; font-size: .95rem;
-}
-.meter { display: flex; align-items: center; gap: 10px; color: var(--muted); font-weight: 800; font-size: .85rem; }
-.meter .bar { display: block; flex: 1; height: 10px; border-radius: 999px; background: var(--sky); border: 2px solid var(--line); overflow: hidden; }
-.meter .fill { display: block; height: 100%; background: var(--leaf); border-radius: 999px; transition: width .9s ease; }
 
 /* Silhouette mode */
 .sil-wrap {
@@ -276,7 +265,6 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
 @media (prefers-reduced-motion: reduce) {
   .clue.fresh { animation: none; }
-  .photo img, .meter .fill { transition: none; }
   .sil-wrap.revealed img { animation: none; filter: brightness(1) saturate(1); transform: scale(1); }
   .cry-btn.playing::before, .cry-btn.playing::after { animation: none; }
 }
@@ -306,11 +294,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
       <span><b>Clues</b><small>Read 3 clues</small></span>
     </button>
-    <button type="button" id="typePicture" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
-      <span><b>Picture</b><small>Blurry picture gets clearer</small></span>
-    </button>
-    <button type="button" id="typeSilhouette" aria-pressed="false">
+<button type="button" id="typeSilhouette" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 3-2 5.5-5 6.7V17h2a1 1 0 0 1 0 2h-2v1a1 1 0 0 1-2 0v-1H10a1 1 0 0 1 0-2h2v-1.3C9 14.5 7 12 7 9a7 7 0 0 1 5-6.7" fill="currentColor" stroke="none"/><ellipse cx="12" cy="21" rx="4" ry="1.2" fill="currentColor" stroke="none" opacity=".3"/></svg>
       <span><b>Silhouette</b><small>Who's that Pokémon?</small></span>
     </button>
@@ -406,12 +390,9 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     $("sfxOn").setAttribute("aria-pressed", settings.sfx);
     $("sfxOff").setAttribute("aria-pressed", !settings.sfx);
     $("typeClues").setAttribute("aria-pressed", settings.game === "clues");
-    $("typePicture").setAttribute("aria-pressed", settings.game === "picture");
     $("typeSilhouette").setAttribute("aria-pressed", settings.game === "silhouette");
     $("typeCry").setAttribute("aria-pressed", settings.game === "cry");
-    $("tagline").textContent = settings.game === "picture"
-      ? "A blurry picture. It gets clearer each time you guess."
-      : settings.game === "silhouette"
+    $("tagline").textContent = settings.game === "silhouette"
       ? "Who's that Pokémon? Guess the silhouette!"
       : settings.game === "cry"
       ? "Hear the cry. Can you name the Pokémon?"
@@ -434,7 +415,6 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     else newRound();
   }
   $("typeClues").onclick = () => setGame("clues");
-  $("typePicture").onclick = () => setGame("picture");
   $("typeSilhouette").onclick = () => setGame("silhouette");
   $("typeCry").onclick = () => setGame("cry");
 
@@ -449,17 +429,6 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     $("sPlayed").textContent = score.played;
     store.set("score", score);
   }
-
-  // ---------- picture blur ----------
-  // Steps run from very blurry to nearly clear across the guesses you have.
-  const BLUR_MAX = 26, BLUR_MIN = 3;
-  function blurFor(r) {
-    if (r.done) return 0;
-    const steps = Math.max(r.total, 2);
-    const used = Math.min(r.wrong.length + r.extra, steps - 1);
-    return Math.round(BLUR_MAX - (BLUR_MAX - BLUR_MIN) * used / (steps - 1));
-  }
-  const clarity = (r) => r.done ? 100 : Math.round(100 * (1 - (blurFor(r) - BLUR_MIN) / (BLUR_MAX - BLUR_MIN + 4)));
 
   // ---------- game ----------
   function newRound() {
@@ -479,7 +448,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   // warm the browser cache for a likely next picture
   function preloadNext() {
-    if (settings.game !== "picture" && settings.game !== "silhouette") return;
+    if (settings.game !== "silhouette") return;
     const pool = POKEMON.filter((p) => !seen.includes(p.id) && p.id !== round.p.id);
     if (pool.length) { const im = new Image(); im.src = pool[Math.floor(Math.random() * pool.length)].image_url; }
   }
@@ -502,7 +471,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     round.wrong.push(id != null ? id : text.trim());
     round.left--;
     if (round.left <= 0) return finish(false);
-    if (round.game === "clues" || round.game === "silhouette" || round.game === "cry" || round.imgFailed) {
+    if (round.game === "clues" || round.game === "silhouette" || round.game === "cry") {
       if (round.shown < 3) { round.shown++; round.fresh = round.shown; round.msg = "Not quite! Here's a clue."; }
       else round.msg = "Not quite! Try again.";
     } else {
@@ -514,13 +483,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   function helpMore() {
     if (!round || round.done) return;
-    if (round.game === "picture" && !round.imgFailed) {
-      if (blurFor(round) <= BLUR_MIN) return;
-      round.extra++;
-    } else {
-      if (round.shown >= 3) return;
-      round.shown++; round.fresh = round.shown;
-    }
+    if (round.shown >= 3) return;
+    round.shown++; round.fresh = round.shown;
     round.msg = "";
     render();
   }
@@ -540,11 +504,9 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   const speakerSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
   const eyeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 
-  function photoHtml(r, small) {
-    const blur = blurFor(r);
-    return `<div class="photo ${r.done ? "clear" : ""} ${small ? "small" : ""}" id="photo">
-      <img id="photoImg" src="${esc(r.p.image_url)}" alt="${r.done ? esc(r.p.name) : "Mystery picture"}"
-        draggable="false" style="filter: blur(${blur}px) saturate(${r.done ? 1 : 1.15})">
+  function photoHtml(r) {
+    return `<div class="photo" id="photo">
+      <img id="photoImg" src="${esc(r.p.image_url)}" alt="${esc(r.p.name)}" draggable="false">
     </div>`;
   }
 
@@ -580,7 +542,6 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   function render() {
     const r = round, p = r.p;
-    const pictureRound = r.game === "picture" && !r.imgFailed;
     const silhouetteRound = r.game === "silhouette" && !r.imgFailed;
     const cryRound = r.game === "cry";
 
@@ -589,26 +550,20 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
     let top, body;
     if (!r.done) {
-      const subhead = pictureRound ? "Look closely at the blurry picture"
-        : silhouetteRound ? "Guess the Pokémon from the silhouette"
+      const subhead = silhouetteRound ? "Guess the Pokémon from the silhouette"
         : cryRound ? "Listen carefully — then choose or type"
         : "A mystery friend from the first 151";
       top = `<div class="mystery" aria-hidden="true">?</div>
         <div><h2>Who am I?</h2><p>${subhead}</p></div>`;
 
-      const puzzle = pictureRound
-        ? `${photoHtml(r)}
-           <div class="meter"><span>Blurry</span><span class="bar"><span class="fill" style="width:${clarity(r)}%"></span></span><span>Clear</span></div>`
-        : silhouetteRound
+      const puzzle = silhouetteRound
         ? `${silhouetteHtml(r)}<ol class="clues">${clueList(r)}</ol>`
         : cryRound
         ? `${cryHtml()}<ol class="clues">${clueList(r)}</ol>`
         : `<ol class="clues">${clueList(r)}</ol>`;
 
-      const helpDisabled = pictureRound ? blurFor(r) <= BLUR_MIN : r.shown >= 3;
-      const tools = pictureRound
-        ? `<button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>${eyeSvg} Make it clearer</button>`
-        : silhouetteRound
+      const helpDisabled = r.shown >= 3;
+      const tools = silhouetteRound
         ? `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
            <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Get a clue</button>`
         : cryRound
@@ -635,7 +590,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       top = `<div class="mystery ${r.won ? "win" : "lose"}" aria-hidden="true">#${p.id}</div>
         <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? "Great detective work." : "Here's who it was."}</p></div>`;
       body = `
-        ${r.imgFailed ? "" : r.game === "silhouette" ? silhouetteHtml(r) : photoHtml(r, r.game === "clues" || r.game === "cry")}
+        ${r.imgFailed ? "" : r.game === "silhouette" ? silhouetteHtml(r) : photoHtml(r)}
         <div class="result">
           <p class="big">${esc(p.name)}</p>
           <div class="types">${[p.type1, p.type2].filter(Boolean).map((t) => `<span class="type">${esc(t)}</span>`).join("")}</div>
