@@ -274,6 +274,46 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   .modes button svg { width: 28px; height: 28px; }
 }
 @media (max-width: 360px) { .choices { grid-template-columns: 1fr; } }
+
+/* Pokédex overlay */
+.dex-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+.dex-panel {
+  background: var(--paper); border-radius: 22px; border: 2px solid var(--line);
+  box-shadow: 0 8px 48px rgba(0,0,0,.35); max-width: 500px; width: 100%;
+  max-height: 88vh; overflow-y: auto; padding: 24px; display: grid; gap: 16px;
+  animation: dex-in .28s cubic-bezier(.2,.8,.4,1);
+}
+@keyframes dex-in { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+.dex-head { text-align: center; }
+.dex-head h2 { margin: 0 0 2px; font: 800 1.5rem/1 var(--display); color: var(--leaf); }
+.dex-head p { margin: 0; color: var(--muted); font-weight: 700; }
+.dex-bar { background: var(--sky); border-radius: 10px; height: 10px; overflow: hidden; border: 2px solid var(--line); }
+.dex-bar-fill { height: 100%; background: var(--leaf); border-radius: 8px; transition: width .5s ease; }
+.dex-new {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--leaf-soft); border: 2px solid var(--leaf); border-radius: 16px; padding: 14px;
+  animation: pop .4s ease-out;
+}
+.dex-new img { width: 72px; height: 72px; object-fit: contain; flex: none; }
+.dex-new-name { font: 800 1.25rem/1.1 var(--display); }
+.dex-new-meta { color: var(--muted); font-weight: 700; font-size: .88rem; margin-top: 3px; }
+.dex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.dex-slot {
+  aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--line);
+  background: var(--sky); overflow: hidden; position: relative; display: grid; place-items: center;
+}
+.dex-slot img { width: 85%; height: 85%; object-fit: contain; filter: grayscale(1) brightness(.35); opacity: .45; pointer-events: none; }
+.dex-slot.got img { filter: none; opacity: 1; }
+.dex-slot.fresh-catch { border-color: var(--sun); box-shadow: 0 0 0 2px var(--sun); }
+.dex-slot .dex-n { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font: 700 .52rem var(--body); color: var(--muted); line-height: 1; }
+.dex-actions { display: flex; gap: 10px; justify-content: center; }
+.dex-win-head { text-align: center; }
+.dex-win-head h2 { margin: 0 0 4px; font: 800 2rem/1 var(--display); color: var(--sun); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; }
+.dex-win-head p { margin: 0; color: var(--muted); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -359,7 +399,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   const settings = Object.assign({ guesses: 3, mode: "pick", sfx: true, game: "clues" }, store.get("settings", {}));
   const score = Object.assign({ right: 0, streak: 0, played: 0 }, store.get("score", {}));
-  let seen = store.get("seen", []);
+  let seen = [];   // session-only: Pokémon shown this run (win or lose)
+  let caught = []; // session-only: Pokémon correctly identified this run
 
   let POKEMON = [];
   let round = null;
@@ -434,7 +475,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   function newRound() {
     if (currentCry) { currentCry.pause(); currentCry = null; }
     let pool = POKEMON.filter((p) => !seen.includes(p.id));
-    if (pool.length === 0) { seen = []; pool = POKEMON.slice(); }
+    if (pool.length === 0) { seen = []; caught = []; pool = POKEMON.slice(); }
     const p = pool[Math.floor(Math.random() * pool.length)];
     const decoys = shuffle(POKEMON.filter((x) => x.id !== p.id)).slice(0, 3);
     round = {
@@ -455,12 +496,20 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   function finish(won) {
     round.done = true; round.won = won; round.shown = 3;
-    seen.push(round.p.id); store.set("seen", seen);
+    seen.push(round.p.id);
     score.played++;
-    if (won) { score.right++; score.streak++; } else { score.streak = 0; }
+    if (won) { score.right++; score.streak++; caught.push(round.p.id); } else { score.streak = 0; }
     paintScore();
     sfx(won ? "win" : "lose");
     render();
+    if (won) {
+      if (caught.length === POKEMON.length) {
+        sfx("win-all");
+        setTimeout(() => showPokedex(true), 500);
+      } else {
+        setTimeout(() => showPokedex(false), 350);
+      }
+    }
   }
 
   function submitGuess(text, id) {
@@ -747,9 +796,56 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (!settings.sfx || !ensureAudio()) return;
     ctx.resume();
     const t = ctx.currentTime + 0.02;
-    if (kind === "win") [72, 76, 79, 84].forEach((m, i) => pluck(sfxBus, m, t + i * 0.11, 0.25, 1.6));
+    if (kind === "win-all") [60, 64, 67, 72, 76, 79, 84, 88].forEach((m, i) => pluck(sfxBus, m, t + i * 0.13, 0.32, 2.6));
+    else if (kind === "win") [72, 76, 79, 84].forEach((m, i) => pluck(sfxBus, m, t + i * 0.11, 0.25, 1.6));
     else if (kind === "miss") [67, 64].forEach((m, i) => pluck(sfxBus, m, t + i * 0.14, 0.16, 0.9));
     else [65, 64, 60].forEach((m, i) => pluck(sfxBus, m, t + i * 0.18, 0.16, 1.2));
+  }
+
+  // ---------- pokédex ----------
+  function showPokedex(isWin) {
+    const newP = isWin ? null : round.p;
+    const sorted = POKEMON.slice().sort((a, b) => a.id - b.id);
+    const total = POKEMON.length;
+    const barPct = Math.round((caught.length / total) * 100);
+
+    const headerHtml = isWin
+      ? `<div class="dex-win-head"><h2>You caught them all!</h2><p>${total} of ${total} &mdash; congratulations!</p></div>`
+      : `<div class="dex-head"><h2>Pok&eacute;dex</h2><p>${caught.length} of ${total} caught</p></div>`;
+
+    const barHtml = `<div class="dex-bar"><div class="dex-bar-fill" style="width:${barPct}%"></div></div>`;
+
+    const newCardHtml = !isWin && newP ? `
+      <div class="dex-new">
+        <img src="${esc(newP.image_url)}" alt="${esc(newP.name)}">
+        <div>
+          <div class="dex-new-name">${esc(newP.name)} added!</div>
+          <div class="dex-new-meta">#${newP.id} &middot; ${[newP.type1, newP.type2].filter(Boolean).join(" / ")}</div>
+        </div>
+      </div>` : "";
+
+    const gridHtml = `<div class="dex-grid">${sorted.map((p) =>
+      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${!isWin && newP && p.id === newP.id ? "fresh-catch" : ""}" title="${esc(p.name)} #${p.id}">
+        <img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">
+        <span class="dex-n">${p.id}</span>
+      </div>`).join("")}</div>`;
+
+    const actionsHtml = isWin
+      ? `<div class="dex-actions"><button class="btn" type="button" id="dexAgain">Play Again</button></div>`
+      : `<div class="dex-actions"><button class="btn" type="button" id="dexClose">Continue</button></div>`;
+
+    const overlay = document.createElement("div");
+    overlay.className = "dex-overlay";
+    overlay.innerHTML = `<div class="dex-panel">${headerHtml}${barHtml}${newCardHtml}${gridHtml}${actionsHtml}</div>`;
+    document.body.appendChild(overlay);
+
+    if (isWin) {
+      overlay.querySelector("#dexAgain").onclick = () => { seen = []; caught = []; overlay.remove(); newRound(); };
+    } else {
+      const closeBtn = overlay.querySelector("#dexClose");
+      closeBtn.onclick = () => overlay.remove();
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    }
   }
 
   // ---------- boot ----------
