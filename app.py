@@ -1,19 +1,23 @@
 import os
 import duckdb
-from flask import Flask, render_template_string, request, jsonify
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template_string, jsonify
 
 app = Flask(__name__)
+
+# Place MP3 files in static/music/ to make them available as music options.
+# The three preset tracks the game expects:
+#   static/music/town.mp3       — calm/town vibe
+#   static/music/battle.mp3     — upbeat/battle vibe
+#   static/music/adventure.mp3  — exploration/adventure vibe
+#
+# Good sources for free CC-licensed game music:
+#   https://opengameart.org  (search "pokemon", "chiptune", "town", "battle")
+#   https://filmmusic.io     (Kevin MacLeod — search "hero", "adventure", "chiptune")
 
 MUSIC_FOLDER = os.path.join(app.static_folder, "music")
 os.makedirs(MUSIC_FOLDER, exist_ok=True)
 
-ALLOWED_AUDIO = {"mp3", "ogg", "wav", "m4a"}
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
-
-
-def allowed_audio(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_AUDIO
+AUDIO_EXTENSIONS = {"mp3", "ogg", "wav", "m4a"}
 
 
 @app.route("/")
@@ -26,30 +30,15 @@ def pokemon_quest():
     return render_template_string(html, pokemon=rows)
 
 
-@app.route("/upload-music", methods=["POST"])
-def upload_music():
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-    f = request.files["file"]
-    if not f.filename:
-        return jsonify({"error": "No file selected"}), 400
-    if not allowed_audio(f.filename):
-        return jsonify({"error": "Only audio files (mp3, ogg, wav, m4a) are allowed"}), 400
-    if request.content_length and request.content_length > MAX_UPLOAD_BYTES:
-        return jsonify({"error": "File too large (max 20 MB)"}), 413
-    filename = secure_filename(f.filename)
-    f.save(os.path.join(MUSIC_FOLDER, filename))
-    return jsonify({"url": f"/static/music/{filename}", "name": filename})
-
-
 @app.route("/music-list")
 def music_list():
+    """Returns any extra MP3s placed in static/music/ beyond the three presets."""
     files = []
     if os.path.exists(MUSIC_FOLDER):
         files = [
             {"name": fname, "url": f"/static/music/{fname}"}
             for fname in sorted(os.listdir(MUSIC_FOLDER))
-            if "." in fname and fname.rsplit(".", 1)[1].lower() in ALLOWED_AUDIO
+            if "." in fname and fname.rsplit(".", 1)[1].lower() in AUDIO_EXTENSIONS
         ]
     return jsonify(files)
 

@@ -329,13 +329,6 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   border: 2px solid var(--line); background: var(--sky); color: var(--ink);
   border-radius: 12px; padding: 8px 12px; font: 700 .95rem var(--body); cursor: pointer; min-width: 140px;
 }
-.upload-label {
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  border: 2px solid var(--line); background: var(--paper); color: var(--ink);
-  border-radius: 999px; padding: 8px 14px; font: 800 .9rem var(--body);
-}
-.upload-label:hover { border-color: var(--leaf); background: var(--leaf-soft); }
-#uploadStatus { font-size: .85rem; font-weight: 700; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -400,21 +393,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       </div>
     </div>
     <div class="setrow">
-      <div><span class="lbl">Background music</span><small>Built-in synth or your own MP3</small></div>
+      <div><span class="lbl">Background music</span><small>Pick a track to play while you guess</small></div>
       <select class="music-select" id="musicSrc">
         <option value="builtin">Built-in synth</option>
+        <option value="/static/music/town.mp3">Town Theme</option>
+        <option value="/static/music/battle.mp3">Battle Theme</option>
+        <option value="/static/music/adventure.mp3">Adventure Theme</option>
       </select>
-    </div>
-    <div class="setrow">
-      <div><span class="lbl">Upload music</span><small>Add an MP3 to the server — appears in the selector above</small></div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <label class="upload-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Choose MP3
-          <input type="file" id="musicUpload" accept="audio/mpeg,.mp3" style="display:none">
-        </label>
-        <span id="uploadStatus"></span>
-      </div>
     </div>
   </details>
 
@@ -950,30 +935,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (musicOn) { setMusic(false); setMusic(true); }
   };
 
-  $("musicUpload").onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const statusEl = $("uploadStatus");
-    statusEl.textContent = "Uploading\u2026";
-    const fd = new FormData();
-    fd.append("file", file);
-    try {
-      const res = await fetch("/upload-music", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      await loadMusicList();
-      $("musicSrc").value = data.url;
-      settings.musicSrc = data.url;
-      store.set("settings", settings);
-      statusEl.textContent = "Uploaded!";
-    } catch (err) {
-      statusEl.textContent = "Upload failed";
-    }
-    setTimeout(() => { statusEl.textContent = ""; }, 2500);
-    e.target.value = "";
-  };
-
-  $("dexBtn").onclick = () => {
+$("dexBtn").onclick = () => {
     $("dexBtn").classList.remove("dex-notify");
     if (POKEMON.length) showPokedex("browse");
   };
