@@ -317,6 +317,15 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 .dex-slot.got img { filter: none; opacity: 1; }
 .dex-slot.fresh-catch { border-color: var(--sun); box-shadow: 0 0 0 2px var(--sun); }
 .dex-slot .dex-n { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font: 700 .52rem var(--body); color: var(--muted); line-height: 1; }
+.dex-tooltip {
+  position: fixed; z-index: 300; pointer-events: none;
+  background: var(--ink); color: var(--paper);
+  border-radius: 10px; padding: 8px 12px;
+  font: 600 .82rem/1.5 var(--body); white-space: nowrap;
+}
+.dex-tooltip[hidden] { display: none; }
+.dex-tooltip strong { font-weight: 800; }
+.dex-tooltip span { opacity: .75; }
 .dex-actions { display: flex; gap: 10px; justify-content: center; }
 .dex-win-head { text-align: center; }
 .dex-win-head h2 { margin: 0 0 4px; font: 800 2rem/1 var(--display); color: var(--sun); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; }
@@ -920,7 +929,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       </div>` : "";
 
     const gridHtml = `<div class="dex-grid">${sorted.map((p) =>
-      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${newP && p.id === newP.id ? "fresh-catch" : ""}" title="${esc(p.name)} #${p.id}">
+      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${newP && p.id === newP.id ? "fresh-catch" : ""}" data-pid="${p.id}">
         <img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">
         <span class="dex-n">${p.id}</span>
       </div>`).join("")}</div>`;
@@ -934,12 +943,42 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     overlay.innerHTML = `<div class="dex-panel">${headerHtml}${barHtml}${newCardHtml}${gridHtml}${actionsHtml}</div>`;
     document.body.appendChild(overlay);
 
+    // Floating tooltip (fixed-position so it clears the scroll container)
+    const tip = document.createElement("div");
+    tip.className = "dex-tooltip";
+    document.body.appendChild(tip);
+
+    const grid = overlay.querySelector(".dex-grid");
+    grid.addEventListener("mouseover", (e) => {
+      const slot = e.target.closest(".dex-slot");
+      if (!slot) { tip.hidden = true; return; }
+      const p = sorted.find((x) => x.id === Number(slot.dataset.pid));
+      if (!p) return;
+      tip.hidden = false;
+      if (caught.includes(p.id)) {
+        tip.innerHTML = `<strong>${esc(p.name)}</strong> &nbsp;#${p.id}<br><span>${[p.type1, p.type2].filter(Boolean).join(" / ")}</span>`;
+      } else {
+        tip.innerHTML = `<span>#${p.id} &mdash; not yet caught</span>`;
+      }
+    });
+    grid.addEventListener("mousemove", (e) => {
+      if (tip.hidden) return;
+      const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+      const y = e.clientY - tip.offsetHeight - 10;
+      tip.style.left = x + "px";
+      tip.style.top = y + "px";
+    });
+    grid.addEventListener("mouseout", (e) => {
+      if (!e.relatedTarget?.closest(".dex-grid")) tip.hidden = true;
+    });
+
+    const close = () => { tip.remove(); overlay.remove(); };
+
     if (isWin) {
-      overlay.querySelector("#dexAgain").onclick = () => { seen = []; caught = []; paintScore(); overlay.remove(); newRound(); };
+      overlay.querySelector("#dexAgain").onclick = () => { seen = []; caught = []; paintScore(); close(); newRound(); };
     } else {
-      const closeBtn = overlay.querySelector("#dexClose");
-      closeBtn.onclick = () => overlay.remove();
-      overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+      overlay.querySelector("#dexClose").onclick = close;
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
     }
   }
 
