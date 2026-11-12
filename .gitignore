@@ -1,1 +1,4 @@
 ADD_TO_app.py.txt
+static/music/
+__pycache__/
+*.pyc

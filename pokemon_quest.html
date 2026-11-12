@@ -314,6 +314,21 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 .dex-win-head { text-align: center; }
 .dex-win-head h2 { margin: 0 0 4px; font: 800 2rem/1 var(--display); color: var(--sun); -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; }
 .dex-win-head p { margin: 0; color: var(--muted); font-weight: 700; }
+
+/* Pokéball dex button */
+#dexBtn svg { width: 22px; height: 22px; flex: none; }
+@keyframes dex-ping {
+  0%   { box-shadow: 0 0 0 0px rgba(243,189,71,.85); }
+  65%  { box-shadow: 0 0 0 11px rgba(243,189,71,0); }
+  100% { box-shadow: 0 0 0 0px rgba(243,189,71,0); }
+}
+#dexBtn.dex-notify { animation: dex-ping 1.4s ease-out infinite; border-color: var(--sun); }
+
+/* Music options */
+.music-select {
+  border: 2px solid var(--line); background: var(--sky); color: var(--ink);
+  border-radius: 12px; padding: 8px 12px; font: 700 .95rem var(--body); cursor: pointer; min-width: 140px;
+}
 </style>
 </head>
 <body>
@@ -323,6 +338,15 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       <h1>Clue Quest <span>151</span></h1>
       <p class="tag" id="tagline">Three clues. Can you guess who it is?</p>
     </div>
+    <button class="iconbtn" id="dexBtn" type="button" aria-label="Open Pokédex">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" fill="white" stroke="#2a2a2a" stroke-width="2"/>
+        <path d="M2,12 A10,10 0 0,1 22,12 Z" fill="#d9505c"/>
+        <line x1="2" y1="12" x2="22" y2="12" stroke="#2a2a2a" stroke-width="2.5"/>
+        <circle cx="12" cy="12" r="3.2" fill="white" stroke="#2a2a2a" stroke-width="2"/>
+      </svg>
+      <span>Pokédex</span>
+    </button>
     <button class="iconbtn" id="musicBtn" type="button" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/></svg>
       <span id="musicLbl">Music</span>
@@ -368,6 +392,15 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
         <button type="button" id="sfxOff" aria-pressed="false">Off</button>
       </div>
     </div>
+    <div class="setrow">
+      <div><span class="lbl">Background music</span><small>Pick a track to play while you guess</small></div>
+      <select class="music-select" id="musicSrc">
+        <option value="builtin">Built-in synth</option>
+        <option value="/static/music/town.mp3">Town Theme</option>
+        <option value="/static/music/battle.mp3">Battle Theme</option>
+        <option value="/static/music/adventure.mp3">Adventure Theme</option>
+      </select>
+    </div>
   </details>
 
   <main class="card" id="card" aria-live="polite">
@@ -397,7 +430,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     set(k, v) { try { localStorage.setItem("cq151:" + k, JSON.stringify(v)); } catch {} }
   };
 
-  const settings = Object.assign({ guesses: 3, mode: "pick", sfx: true, game: "clues" }, store.get("settings", {}));
+  const settings = Object.assign({ guesses: 3, mode: "pick", sfx: true, game: "clues", musicSrc: "builtin" }, store.get("settings", {}));
   const score = Object.assign({ right: 0, streak: 0, played: 0 }, store.get("score", {}));
   let seen = [];   // session-only: Pokémon shown this run (win or lose)
   let caught = []; // session-only: Pokémon correctly identified this run
@@ -405,6 +438,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   let POKEMON = [];
   let round = null;
   let currentCry = null;
+  let bgAudio = null;
 
   function playCry(id, onEnd) {
     if (currentCry) { currentCry.pause(); currentCry = null; }
@@ -438,6 +472,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       : settings.game === "cry"
       ? "Hear the cry. Can you name the Pokémon?"
       : "Three clues. Can you guess who it is?";
+    const mSrc = $("musicSrc");
+    if (mSrc && !mSrc.dataset.populated) mSrc.value = settings.musicSrc || "builtin";
     store.set("settings", settings);
   }
   $("gDown").onclick = () => { settings.guesses = Math.max(1, settings.guesses - 1); paintSettings(); restartIfFresh(); };
@@ -505,9 +541,9 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (won) {
       if (caught.length === POKEMON.length) {
         sfx("win-all");
-        setTimeout(() => showPokedex(true), 500);
+        setTimeout(() => showPokedex("win"), 500);
       } else {
-        setTimeout(() => showPokedex(false), 350);
+        $("dexBtn").classList.add("dex-notify");
       }
     }
   }
@@ -774,21 +810,43 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   }
 
   function setMusic(on) {
-    if (!ensureAudio()) return;
-    ctx.resume();
     musicOn = on;
-    const now = ctx.currentTime;
-    musicBus.gain.cancelScheduledValues(now);
-    musicBus.gain.setValueAtTime(musicBus.gain.value, now);
-    if (on) {
-      musicBus.gain.linearRampToValueAtTime(0.9, now + 1.2);
-      if (!timer) { nextTime = now + 0.1; step = 0; tick(); timer = setInterval(tick, 200); }
-    } else {
-      musicBus.gain.linearRampToValueAtTime(0, now + 0.8);
-      setTimeout(() => { if (!musicOn && timer) { clearInterval(timer); timer = null; } }, 900);
-    }
     $("musicBtn").setAttribute("aria-pressed", on);
     $("musicLbl").textContent = on ? "Music on" : "Music";
+    const src = settings.musicSrc || "builtin";
+    if (src === "builtin") {
+      if (bgAudio) { bgAudio.pause(); }
+      if (!ensureAudio()) return;
+      ctx.resume();
+      const now = ctx.currentTime;
+      musicBus.gain.cancelScheduledValues(now);
+      musicBus.gain.setValueAtTime(musicBus.gain.value, now);
+      if (on) {
+        musicBus.gain.linearRampToValueAtTime(0.9, now + 1.2);
+        if (!timer) { nextTime = now + 0.1; step = 0; tick(); timer = setInterval(tick, 200); }
+      } else {
+        musicBus.gain.linearRampToValueAtTime(0, now + 0.8);
+        setTimeout(() => { if (!musicOn && timer) { clearInterval(timer); timer = null; } }, 900);
+      }
+    } else {
+      if (ctx && musicBus) {
+        const now = ctx.currentTime;
+        musicBus.gain.cancelScheduledValues(now);
+        musicBus.gain.setValueAtTime(0, now);
+        if (timer) { clearInterval(timer); timer = null; }
+      }
+      if (on) {
+        if (!bgAudio || bgAudio._cqSrc !== src) {
+          if (bgAudio) bgAudio.pause();
+          bgAudio = new Audio(src);
+          bgAudio._cqSrc = src;
+          bgAudio.loop = true;
+        }
+        bgAudio.play().catch(() => {});
+      } else {
+        if (bgAudio) bgAudio.pause();
+      }
+    }
   }
   $("musicBtn").onclick = () => setMusic(!musicOn);
 
@@ -803,8 +861,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   }
 
   // ---------- pokédex ----------
-  function showPokedex(isWin) {
-    const newP = isWin ? null : round.p;
+  // mode: "catch" (auto-open after correct answer), "win" (all 151 caught), "browse" (manual open)
+  function showPokedex(mode) {
+    const isWin = mode === "win";
+    const newP = mode === "catch" ? round.p : null;
     const sorted = POKEMON.slice().sort((a, b) => a.id - b.id);
     const total = POKEMON.length;
     const barPct = Math.round((caught.length / total) * 100);
@@ -815,7 +875,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
     const barHtml = `<div class="dex-bar"><div class="dex-bar-fill" style="width:${barPct}%"></div></div>`;
 
-    const newCardHtml = !isWin && newP ? `
+    const newCardHtml = newP ? `
       <div class="dex-new">
         <img src="${esc(newP.image_url)}" alt="${esc(newP.name)}">
         <div>
@@ -825,14 +885,14 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       </div>` : "";
 
     const gridHtml = `<div class="dex-grid">${sorted.map((p) =>
-      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${!isWin && newP && p.id === newP.id ? "fresh-catch" : ""}" title="${esc(p.name)} #${p.id}">
+      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${newP && p.id === newP.id ? "fresh-catch" : ""}" title="${esc(p.name)} #${p.id}">
         <img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">
         <span class="dex-n">${p.id}</span>
       </div>`).join("")}</div>`;
 
     const actionsHtml = isWin
       ? `<div class="dex-actions"><button class="btn" type="button" id="dexAgain">Play Again</button></div>`
-      : `<div class="dex-actions"><button class="btn" type="button" id="dexClose">Continue</button></div>`;
+      : `<div class="dex-actions"><button class="btn" type="button" id="dexClose">Close</button></div>`;
 
     const overlay = document.createElement("div");
     overlay.className = "dex-overlay";
@@ -848,6 +908,38 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     }
   }
 
+  // ---------- music options ----------
+  async function loadMusicList() {
+    try {
+      const res = await fetch("/music-list");
+      if (!res.ok) return;
+      const tracks = await res.json();
+      const sel = $("musicSrc");
+      if (!sel) return;
+      sel.querySelectorAll("[data-server]").forEach((o) => o.remove());
+      tracks.forEach((t) => {
+        const opt = document.createElement("option");
+        opt.value = t.url;
+        opt.textContent = t.name.replace(/\.[^.]+$/, "");
+        opt.dataset.server = "1";
+        sel.appendChild(opt);
+      });
+      sel.dataset.populated = "1";
+      sel.value = settings.musicSrc || "builtin";
+    } catch {}
+  }
+
+  $("musicSrc").onchange = () => {
+    settings.musicSrc = $("musicSrc").value;
+    store.set("settings", settings);
+    if (musicOn) { setMusic(false); setMusic(true); }
+  };
+
+$("dexBtn").onclick = () => {
+    $("dexBtn").classList.remove("dex-notify");
+    if (POKEMON.length) showPokedex("browse");
+  };
+
   // ---------- boot ----------
   paintSettings(); paintScore();
 
@@ -856,7 +948,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     throw new Error("no data from the server");
   }
 
-  load().then((rows) => { POKEMON = rows; newRound(); })
+  load().then((rows) => { POKEMON = rows; newRound(); loadMusicList(); })
     .catch((e) => { card.innerHTML = `<p class="loading">Couldn't load the Pokémon list (${esc(e.message)}). Refresh to try again.</p>`; });
 })();
 </script>
