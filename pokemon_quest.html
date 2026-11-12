@@ -316,19 +316,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 .dex-win-head p { margin: 0; color: var(--muted); font-weight: 700; }
 
 /* Pokéball dex button */
-#dexBtn {
-  width: 52px; height: 52px; border-radius: 50%; padding: 0; gap: 0; flex: none;
-  border: 3px solid #2a2a2a;
-  background: linear-gradient(to bottom, var(--berry) 0% 46%, #2a2a2a 46% 54%, var(--paper) 54% 100%);
-  position: relative;
-}
-#dexBtn::after {
-  content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%;
-  background: var(--paper); border: 3px solid #2a2a2a;
-  top: 50%; left: 50%; transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-#dexBtn > * { display: none; }
+#dexBtn svg { width: 22px; height: 22px; flex: none; }
 @keyframes dex-ping {
   0%   { box-shadow: 0 0 0 0px rgba(243,189,71,.85); }
   65%  { box-shadow: 0 0 0 11px rgba(243,189,71,0); }
@@ -358,7 +346,12 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       <p class="tag" id="tagline">Three clues. Can you guess who it is?</p>
     </div>
     <button class="iconbtn" id="dexBtn" type="button" aria-label="Open Pokédex">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" fill="white" stroke="#2a2a2a" stroke-width="2"/>
+        <path d="M2,12 A10,10 0 0,1 22,12 Z" fill="#d9505c"/>
+        <line x1="2" y1="12" x2="22" y2="12" stroke="#2a2a2a" stroke-width="2.5"/>
+        <circle cx="12" cy="12" r="3.2" fill="white" stroke="#2a2a2a" stroke-width="2"/>
+      </svg>
       <span>Pokédex</span>
     </button>
     <button class="iconbtn" id="musicBtn" type="button" aria-pressed="false">
