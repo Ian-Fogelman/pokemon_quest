@@ -366,6 +366,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     </div>
   </header>
 
+  <section class="score" aria-label="Score">
+    <div><b id="sRight">0</b><span>Guessed</span></div>
+    <div><b id="sStreak">0</b><span>Streak</span></div>
+    <div><b id="sPoints">0</b><span>Points</span></div>
+    <div><b id="sPlayed">0</b><span>Played</span></div>
+  </section>
+
   <nav class="modes" aria-label="Game type">
     <button type="button" id="typeClues" aria-pressed="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -419,13 +426,6 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   <main class="card" id="card" aria-live="polite">
     <p class="loading">Loading the field guide…</p>
   </main>
-
-  <section class="score" aria-label="Score">
-    <div><b id="sRight">0</b><span>Guessed</span></div>
-    <div><b id="sStreak">0</b><span>Streak</span></div>
-    <div><b id="sPoints">0</b><span>Points</span></div>
-    <div><b id="sPlayed">0</b><span>Played</span></div>
-  </section>
 
   <footer>A fan-made guessing game for kids. Pokémon names and artwork belong to their owners; pictures load from the PokeAPI sprites project. Music is an original tune played live by your browser.</footer>
 </div>
