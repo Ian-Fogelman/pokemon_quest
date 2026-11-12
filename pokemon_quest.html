@@ -600,15 +600,38 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     render();
   }
 
+  function pickVoice(synth) {
+    const voices = synth.getVoices();
+    // Prefer a female English voice for variety
+    const preferred = voices.find(v => /female|zira|samantha|victoria|karen|moira|fiona|tessa/i.test(v.name) && /en[-_]/i.test(v.lang))
+      || voices.find(v => /en[-_]/i.test(v.lang) && v.name !== (voices[0] || {}).name)
+      || voices[0]
+      || null;
+    return preferred;
+  }
+
   function speak() {
     try {
       const synth = window.speechSynthesis; if (!synth) return;
       synth.cancel();
       const p = round.p;
-      const lines = round.done
-        ? [round.won ? "You got it!" : "Good try!", "It's " + p.name.replace("♀", " girl").replace("♂", " boy") + "."]
-        : [p.clue1, p.clue2, p.clue3].slice(0, round.shown).map((c, i) => "Clue " + (i + 1) + ". " + c);
-      lines.forEach((t) => { const u = new SpeechSynthesisUtterance(t); u.rate = 0.9; u.pitch = 1.1; synth.speak(u); });
+      let lines;
+      if (round.done) {
+        lines = [round.won ? "You got it!" : "Good try!", "It's " + p.name.replace("♀", " girl").replace("♂", " boy") + "."];
+      } else {
+        // Only read the most recently revealed clue
+        const idx = round.shown - 1;
+        const clueText = [p.clue1, p.clue2, p.clue3][idx];
+        lines = clueText ? ["Clue " + (idx + 1) + ". " + clueText] : [];
+      }
+      const voice = pickVoice(synth);
+      lines.forEach((t) => {
+        const u = new SpeechSynthesisUtterance(t);
+        u.rate = 0.9;
+        u.pitch = 1.2;
+        if (voice) u.voice = voice;
+        synth.speak(u);
+      });
     } catch {}
   }
 
