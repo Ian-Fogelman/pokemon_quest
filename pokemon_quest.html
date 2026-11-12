@@ -370,7 +370,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     <div><b id="sRight">0</b><span>Guessed</span></div>
     <div><b id="sStreak">0</b><span>Streak</span></div>
     <div><b id="sPoints">0</b><span>Points</span></div>
-    <div><b id="sPlayed">0</b><span>Played</span></div>
+    <div><b id="sCaught">0/151</b><span>Caught</span></div>
   </section>
 
   <nav class="modes" aria-label="Game type">
@@ -518,7 +518,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     $("sRight").textContent = score.right;
     $("sStreak").textContent = score.streak;
     $("sPoints").textContent = score.points;
-    $("sPlayed").textContent = score.played;
+    $("sCaught").textContent = caught.length + "/" + POKEMON.length;
     store.set("score", score);
   }
 
@@ -935,7 +935,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     document.body.appendChild(overlay);
 
     if (isWin) {
-      overlay.querySelector("#dexAgain").onclick = () => { seen = []; caught = []; overlay.remove(); newRound(); };
+      overlay.querySelector("#dexAgain").onclick = () => { seen = []; caught = []; paintScore(); overlay.remove(); newRound(); };
     } else {
       const closeBtn = overlay.querySelector("#dexClose");
       closeBtn.onclick = () => overlay.remove();
