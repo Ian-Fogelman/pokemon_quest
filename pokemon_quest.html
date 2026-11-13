@@ -603,13 +603,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     const pts = round.game === "clues" ? 1 : round.game === "silhouette" ? 2 : 3;
 
     if (h2h) {
-      // H2H: award points to current player, auto-advance to next turn
+      // H2H: award points to current player, auto-advance to their next Pokémon
       if (won) h2h.scores[h2h.player] += pts;
       sfx(won ? "win" : "lose");
       render();
-      setTimeout(() => {
-        if (!h2h) return;
-        h2h.player = 1 - h2h.player;
+      h2h.nextTimeout = setTimeout(() => {
+        h2h.nextTimeout = null;
+        if (!h2h || h2h.paused) return;
         newRound();
       }, 1600);
       return;
@@ -781,7 +781,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
         ${answer}
         <p class="feedback ${r.msg ? "no" : ""}">${esc(r.msg)}</p>`;
     } else {
-      const nextPlayerNote = h2h ? ` &mdash; P${2 - h2h.player}\u2019s turn next` : "";
+      const nextPlayerNote = "";
       top = `<div class="mystery ${r.won ? "win" : "lose"}" aria-hidden="true">#${p.id}</div>
         <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? `+${r.game === "clues" ? 1 : r.game === "silhouette" ? 2 : 3} point${r.game === "clues" ? "" : "s"} &mdash; ${r.game === "cry" ? "Cry" : r.game === "silhouette" ? "Silhouette" : "Clues"}` : "Here\u2019s who it was."}${nextPlayerNote}</p></div>`;
       body = `
@@ -1002,19 +1002,14 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   }
 
   // ---------- head-to-head ----------
-  function startH2H() {
-    if (h2h) {
-      // Toggle off — cancel session
-      clearInterval(h2h.intervalId);
-      h2h = null;
-      $("h2hBtn").setAttribute("aria-pressed", "false");
-      document.querySelector(".score").style.display = "";
-      newRound();
-      return;
-    }
-    h2h = { scores: [0, 0], player: 0, timeLeft: 60, intervalId: null };
-    $("h2hBtn").setAttribute("aria-pressed", "true");
-    document.querySelector(".score").style.display = "none";
+  // Each player gets their own 60-second turn: P1 plays, hand off, P2 plays, then results.
+  function stopH2HClock() {
+    clearInterval(h2h.intervalId); h2h.intervalId = null;
+    if (h2h.nextTimeout) { clearTimeout(h2h.nextTimeout); h2h.nextTimeout = null; }
+  }
+
+  function startH2HTurn(player) {
+    h2h.player = player; h2h.timeLeft = 60; h2h.paused = false;
     h2h.intervalId = setInterval(() => {
       if (!h2h) return;
       h2h.timeLeft = Math.max(0, h2h.timeLeft - 1);
@@ -1022,14 +1017,53 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       const fill = $("h2hFill"), lbl = $("h2hLbl");
       if (fill) { fill.style.width = (h2h.timeLeft / 60 * 100) + "%"; if (h2h.timeLeft <= 10) fill.classList.add("urgent"); }
       if (lbl) lbl.textContent = h2h.timeLeft + "s left";
-      if (h2h.timeLeft <= 0) endH2H();
+      if (h2h.timeLeft <= 0) { if (h2h.player === 0) handoffH2H(); else endH2H(); }
     }, 1000);
     newRound();
   }
 
+  function handoffH2H() {
+    stopH2HClock();
+    h2h.paused = true;
+    if (currentCry) { currentCry.pause(); currentCry = null; }
+    if (document.activeElement) document.activeElement.blur();
+    const overlay = document.createElement("div");
+    overlay.className = "h2h-overlay";
+    overlay.innerHTML = `<div class="h2h-panel">
+      <h2 class="h2h-winner">Time's up, Player 1!</h2>
+      <div class="h2h-result-scores">
+        <div class="h2h-score-col"><b>${h2h.scores[0]}</b><span>Player 1</span></div>
+        <div class="h2h-vs-divider">vs</div>
+        <div class="h2h-score-col"><b>?</b><span>Player 2</span></div>
+      </div>
+      <p>Pass the device to Player 2. You get 60 seconds too.</p>
+      <button class="btn" type="button" id="h2hGoBtn">Player 2, start!</button>
+    </div>`;
+    document.body.appendChild(overlay);
+    sfx("miss");
+    overlay.querySelector("#h2hGoBtn").onclick = () => { overlay.remove(); if (h2h) startH2HTurn(1); };
+  }
+
+  function startH2H() {
+    if (h2h) {
+      // Toggle off — cancel session
+      stopH2HClock();
+      h2h = null;
+      document.querySelectorAll(".h2h-overlay").forEach((o) => o.remove());
+      $("h2hBtn").setAttribute("aria-pressed", "false");
+      document.querySelector(".score").style.display = "";
+      newRound();
+      return;
+    }
+    h2h = { scores: [0, 0], player: 0, timeLeft: 60, intervalId: null, nextTimeout: null, paused: false };
+    $("h2hBtn").setAttribute("aria-pressed", "true");
+    document.querySelector(".score").style.display = "none";
+    startH2HTurn(0);
+  }
+
   function endH2H() {
     if (!h2h) return;
-    clearInterval(h2h.intervalId);
+    stopH2HClock();
     const scores = h2h.scores.slice();
     h2h = null;
     $("h2hBtn").setAttribute("aria-pressed", "false");
