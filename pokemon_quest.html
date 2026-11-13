@@ -502,6 +502,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   let currentCry = null;
   let bgAudio = null;
   let h2h = null;  // head-to-head state: { scores:[0,0], player:0, timeLeft:60, intervalId }
+  let autoAdvanceTimer = null;
 
   function playCry(id, onEnd) {
     if (currentCry) { currentCry.pause(); currentCry = null; }
@@ -573,6 +574,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   // ---------- game ----------
   function newRound() {
+    if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
     if (currentCry) { currentCry.pause(); currentCry = null; }
     let pool = POKEMON.filter((p) => !seen.includes(p.id));
     if (pool.length === 0) { seen = []; caught = []; pool = POKEMON.slice(); }
@@ -619,13 +621,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (won) { const b = $("sPoints"); b.classList.remove("pts-flash"); void b.offsetWidth; b.classList.add("pts-flash"); }
     sfx(won ? "win" : "lose");
     render();
-    if (won) {
-      if (caught.length === POKEMON.length) {
-        sfx("win-all");
-        setTimeout(() => showPokedex("win"), 500);
-      } else {
-        $("dexBtn").classList.add("dex-notify");
-      }
+    if (won && caught.length === POKEMON.length) {
+      sfx("win-all");
+      setTimeout(() => showPokedex("win"), 500);
+    } else {
+      if (won) $("dexBtn").classList.add("dex-notify");
+      // Auto-advance after a short pause to read the result
+      autoAdvanceTimer = setTimeout(() => { autoAdvanceTimer = null; newRound(); }, 2500);
     }
   }
 
@@ -840,7 +842,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
         if (r.wrong.length) inp.focus();
       }
     } else {
-      $("againBtn").onclick = newRound;
+      $("againBtn").onclick = () => { if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; } newRound(); };
       $("againBtn").focus({ preventScroll: true });
     }
   }
@@ -998,11 +1000,13 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       clearInterval(h2h.intervalId);
       h2h = null;
       $("h2hBtn").setAttribute("aria-pressed", "false");
+      document.querySelector(".score").style.display = "";
       newRound();
       return;
     }
     h2h = { scores: [0, 0], player: 0, timeLeft: 60, intervalId: null };
     $("h2hBtn").setAttribute("aria-pressed", "true");
+    document.querySelector(".score").style.display = "none";
     h2h.intervalId = setInterval(() => {
       if (!h2h) return;
       h2h.timeLeft = Math.max(0, h2h.timeLeft - 1);
@@ -1021,6 +1025,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     const scores = h2h.scores.slice();
     h2h = null;
     $("h2hBtn").setAttribute("aria-pressed", "false");
+    document.querySelector(".score").style.display = "";
 
     const [s1, s2] = scores;
     const winnerText = s1 > s2 ? "Player 1 wins!" : s2 > s1 ? "Player 2 wins!" : "It's a tie!";
