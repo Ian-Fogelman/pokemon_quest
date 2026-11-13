@@ -28,6 +28,24 @@ Each wrong guess costs a life. Run out of guesses and the answer is revealed.
 
 Your **Guessed**, **Streak**, and **Played** counts are saved in your browser across sessions. The game tracks which Pokémon you've seen so you won't get repeats until you've gone through all 151.
 
+## Running Locally
+
+**Prerequisites:** Python 3.8+
+
+1. Clone the repo and install dependencies:
+   ```bash
+   pip install flask duckdb
+   ```
+
+2. Start the dev server:
+   ```bash
+   python run_local.py
+   ```
+
+3. Open your browser to **http://127.0.0.1:5000/pokemon-quest**
+
+> Optional: drop `.mp3` / `.ogg` files into `static/music/` to add custom background tracks (the folder is gitignored).
+
 ## Tech Stack
 
 - Single-page HTML/CSS/JS frontend
