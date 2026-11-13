@@ -620,14 +620,17 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     paintScore();
     if (won) { const b = $("sPoints"); b.classList.remove("pts-flash"); void b.offsetWidth; b.classList.add("pts-flash"); }
     sfx(won ? "win" : "lose");
-    render();
     if (won && caught.length === POKEMON.length) {
+      render();
       sfx("win-all");
       setTimeout(() => showPokedex("win"), 500);
     } else {
-      if (won) $("dexBtn").classList.add("dex-notify");
-      // Auto-advance after a short pause to read the result
-      autoAdvanceTimer = setTimeout(() => { autoAdvanceTimer = null; newRound(); }, 2500);
+      if (won) {
+        render();
+        $("dexBtn").classList.add("dex-notify");
+      } else {
+        render();
+      }
     }
   }
 
@@ -844,6 +847,11 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     } else {
       $("againBtn").onclick = () => { if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; } newRound(); };
       $("againBtn").focus({ preventScroll: true });
+      // Auto-advance in solo mode (not h2h, not win-all)
+      if (!h2h && !(r.won && caught.length === POKEMON.length)) {
+        if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+        autoAdvanceTimer = setTimeout(() => { autoAdvanceTimer = null; if (round === r) newRound(); }, 2500);
+      }
     }
   }
 
