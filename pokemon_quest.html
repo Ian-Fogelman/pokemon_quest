@@ -380,6 +380,11 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 .h2h-score-col b { display: block; font: 800 3rem/1 var(--display); color: var(--leaf); font-variant-numeric: tabular-nums; }
 .h2h-score-col span { font: 800 .82rem var(--body); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .h2h-vs-divider { font: 800 1.3rem var(--display); color: var(--line); }
+
+/* Kid mode */
+.kid-mode .choices button { padding: 22px 12px; font-size: 1.4rem; border-radius: 20px; border-width: 3px; }
+.kid-mode .btn { padding: 16px 28px; font-size: 1.2rem; }
+.kid-mode .card { border-width: 3px; }
 </style>
 </head>
 <body>
@@ -410,6 +415,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       <button class="iconbtn" id="h2hBtn" type="button" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M18.5 6.5L21 4l-3-2-6.5 6.5"/><path d="M5.5 17.5L3 20l3 2 6.5-6.5"/></svg>
         <span>VS Mode</span>
+      </button>
+      <button class="iconbtn" id="kidBtn" type="button" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/></svg>
+        <span>Kid Mode</span>
       </button>
     </div>
   </header>
@@ -492,7 +501,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     set(k, v) { try { localStorage.setItem("cq151:" + k, JSON.stringify(v)); } catch {} }
   };
 
-  const settings = Object.assign({ guesses: 3, mode: "pick", sfx: true, game: "clues", musicSrc: "builtin" }, store.get("settings", {}));
+  const settings = Object.assign({ guesses: 3, mode: "pick", sfx: true, game: "clues", musicSrc: "builtin", kidMode: false }, store.get("settings", {}));
   const score = Object.assign({ right: 0, streak: 0, played: 0, points: 0 }, store.get("score", {}));
   let seen = [];   // session-only: Pokémon shown this run (win or lose)
   let caught = []; // session-only: Pokémon correctly identified this run
@@ -518,19 +527,23 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   const norm = (s) => s.toLowerCase().replace(/♀/g, "f").replace(/♂/g, "m").replace(/[^a-z0-9]/g, "");
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const effMode = () => settings.kidMode ? "pick" : settings.mode;
+  const effGuesses = () => settings.kidMode ? Math.max(settings.guesses, 5) : settings.guesses;
 
   // ---------- settings UI ----------
   function paintSettings() {
     $("gVal").textContent = settings.guesses;
     $("gDown").disabled = settings.guesses <= 1;
     $("gUp").disabled = settings.guesses >= 10;
-    $("modePick").setAttribute("aria-pressed", settings.mode === "pick");
-    $("modeType").setAttribute("aria-pressed", settings.mode === "type");
+    $("modePick").setAttribute("aria-pressed", effMode() === "pick");
+    $("modeType").setAttribute("aria-pressed", effMode() === "type");
     $("sfxOn").setAttribute("aria-pressed", settings.sfx);
     $("sfxOff").setAttribute("aria-pressed", !settings.sfx);
     $("typeClues").setAttribute("aria-pressed", settings.game === "clues");
     $("typeSilhouette").setAttribute("aria-pressed", settings.game === "silhouette");
     $("typeCry").setAttribute("aria-pressed", settings.game === "cry");
+    $("kidBtn").setAttribute("aria-pressed", settings.kidMode);
+    document.body.classList.toggle("kid-mode", settings.kidMode);
     $("tagline").textContent = settings.game === "silhouette"
       ? "Who's that Pokémon? Guess the silhouette!"
       : settings.game === "cry"
@@ -580,7 +593,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (pool.length === 0) { seen = []; caught = []; pool = POKEMON.slice(); }
     const p = pool[Math.floor(Math.random() * pool.length)];
     const decoys = shuffle(POKEMON.filter((x) => x.id !== p.id)).slice(0, 3);
-    const h2hGuesses = h2h ? 1 : settings.guesses;
+    const h2hGuesses = h2h ? 1 : effGuesses();
     round = {
       p, game: settings.game, shown: (settings.game === "silhouette" || settings.game === "cry") ? 0 : 1, extra: 0, left: h2hGuesses, total: h2hGuesses,
       wrong: [], done: false, won: false, imgFailed: false,
@@ -620,6 +633,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     paintScore();
     if (won) { const b = $("sPoints"); b.classList.remove("pts-flash"); void b.offsetWidth; b.classList.add("pts-flash"); }
     sfx(won ? "win" : "lose");
+    if (won) launchConfetti(settings.kidMode);
     if (won && caught.length === POKEMON.length) {
       render();
       sfx("win-all");
@@ -765,7 +779,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
         : `<button class="iconbtn" type="button" id="readBtn">${speakerSvg} Read clues</button>
            <button class="iconbtn" type="button" id="moreBtn" ${helpDisabled ? "disabled" : ""}>Another clue</button>`;
 
-      const answer = settings.mode === "pick"
+      const answer = effMode() === "pick"
         ? `<div class="choices">${r.choices.map((c) => {
             const w = r.wrong.includes(c.id);
             return `<button type="button" data-id="${c.id}" class="${w ? "wrong" : ""}" ${w ? "disabled" : ""}>${esc(c.name)}</button>`;
@@ -1089,6 +1103,60 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   }
 
   $("h2hBtn").onclick = () => { if (POKEMON.length) startH2H(); };
+  $("kidBtn").onclick = () => { settings.kidMode = !settings.kidMode; paintSettings(); if (POKEMON.length) newRound(); };
+
+  // ---------- confetti ----------
+  function launchConfetti(big = false) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+    document.body.appendChild(canvas);
+    const c = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const cx = canvas.width / 2, cy = canvas.height * 0.42;
+    const colors = ['#f3bd47','#2f8a63','#d9505c','#7b68ee','#3399ff','#ff9966','#78c9a0','#f97aad','#ffffff'];
+    const count = big ? 180 : 110;
+    const particles = Array.from({length: count}, () => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = (big ? 5 : 4) + Math.random() * 9;
+      return {
+        x: cx + (Math.random() - 0.5) * 50,
+        y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - (big ? 5 : 4),
+        r: 5 + Math.random() * (big ? 9 : 7),
+        rot: Math.random() * Math.PI * 2,
+        rotV: (Math.random() - 0.5) * 0.28,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        wide: Math.random() > 0.4
+      };
+    });
+    let start = null;
+    const dur = big ? 3600 : 3000;
+    function frame(ts) {
+      if (!start) start = ts;
+      const t = ts - start;
+      c.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      for (const p of particles) {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.19; p.vx *= 0.991; p.rot += p.rotV;
+        if (p.y < canvas.height + 30) alive = true;
+        const alpha = t > dur * 0.65 ? Math.max(0, 1 - (t - dur * 0.65) / (dur * 0.35)) : 1;
+        c.save();
+        c.globalAlpha = alpha;
+        c.fillStyle = p.color;
+        c.translate(p.x, p.y);
+        c.rotate(p.rot);
+        if (p.wide) { c.fillRect(-p.r, -p.r * 0.4, p.r * 2, p.r * 0.8); }
+        else { c.beginPath(); c.arc(0, 0, p.r * 0.65, 0, Math.PI * 2); c.fill(); }
+        c.restore();
+      }
+      if (alive && t < dur + 500) requestAnimationFrame(frame);
+      else canvas.remove();
+    }
+    requestAnimationFrame(frame);
+  }
 
   // ---------- pokédex ----------
   // mode: "catch" (auto-open after correct answer), "win" (all 151 caught), "browse" (manual open)
