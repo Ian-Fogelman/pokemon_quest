@@ -1,4 +1,4 @@
-# Clue Quest 151
+# Pokémon Quest 151
 
 A fan-made Pokémon guessing game for kids, playable in the browser.
 
