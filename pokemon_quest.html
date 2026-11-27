@@ -282,6 +282,62 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--sun); out
 }
 .pts-flash { animation: pts-flash .55s ease-out; }
 
+/* Shiny encounters + sparkle hunt */
+.hunt { display: grid; gap: 10px; text-align: center; }
+.hunt-title { margin: 0; font: 800 1.45rem/1.1 var(--display); color: #b8860b; }
+:root[data-theme="dark"] .hunt-title { color: var(--sun); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hunt-title { color: var(--sun); } }
+.hunt-sub { margin: 0; color: var(--muted); font-weight: 700; }
+.hunt-field {
+  position: relative; height: 280px; border-radius: 20px; overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #fff6c9 0%, #f6d77a 45%, #e9a93a 100%);
+  border: 3px solid var(--sun); touch-action: manipulation;
+}
+.hunt-mystery {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font: 800 6rem/1 var(--display); color: rgba(120, 80, 0, .25);
+  animation: hunt-pulse 1.6s ease-in-out infinite;
+}
+.hunt-field.revealing .hunt-mystery { animation: hunt-flash .9s ease-out forwards; }
+.sparkle {
+  position: absolute; width: 58px; height: 58px; margin: 0; padding: 0;
+  border: 0; border-radius: 50%; cursor: pointer; font-size: 2rem; line-height: 1;
+  background: radial-gradient(circle, #fffbe6 0%, rgba(255, 251, 230, .6) 45%, transparent 70%);
+  animation: sparkle-in .25s ease-out, sparkle-twinkle .5s ease-in-out .25s infinite alternate;
+}
+.sparkle.big { width: 76px; height: 76px; font-size: 2.6rem; }
+.sparkle.got { animation: sparkle-got .35s ease-out forwards; pointer-events: none; }
+.sparkle.gone { animation: sparkle-gone .3s ease-in forwards; pointer-events: none; }
+.hunt-count { margin: 0; font: 800 1.1rem var(--display); }
+.hunt-count b { color: #b8860b; font-size: 1.3em; }
+.hunt-skip { justify-self: center; }
+@keyframes sparkle-in { from { transform: scale(0) rotate(-90deg); } to { transform: none; } }
+@keyframes sparkle-twinkle { to { transform: scale(1.15) rotate(12deg); } }
+@keyframes sparkle-got { to { transform: scale(2.2); opacity: 0; } }
+@keyframes sparkle-gone { to { transform: scale(0); opacity: 0; } }
+@keyframes hunt-pulse { 50% { transform: scale(1.08); color: rgba(120, 80, 0, .4); } }
+@keyframes hunt-flash { 0% { color: #fff; transform: scale(1); } 40% { color: #fff; transform: scale(1.6); text-shadow: 0 0 40px #fff; } 100% { color: transparent; transform: scale(2.4); } }
+.shiny-tag {
+  margin: 0; padding: 8px 12px; border-radius: 14px; text-align: center; font-weight: 700;
+  background: linear-gradient(90deg, var(--sun-soft), color-mix(in srgb, #f6d77a 40%, var(--paper)), var(--sun-soft));
+  border: 2px solid var(--sun);
+}
+.photo.shiny, .sil-wrap.shiny { border-color: #e6b422; box-shadow: 0 0 0 3px #f6d77a, 0 0 24px #f3bd47aa; }
+.photo.shiny::after, .sil-wrap.shiny::after {
+  content: "\2728"; position: absolute; top: 8px; right: 10px; font-size: 1.6rem;
+  animation: sparkle-twinkle .6s ease-in-out infinite alternate;
+}
+.shiny-caught { margin: 0; font-weight: 800; color: #b8860b; }
+:root[data-theme="dark"] .shiny-caught { color: var(--sun); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shiny-caught { color: var(--sun); } }
+.dex-slot.shiny { border-color: #e6b422; background: color-mix(in srgb, #f6d77a 30%, var(--sky)); }
+.dex-star { position: absolute; top: 1px; right: 3px; font-size: .7rem; color: #e6b422; line-height: 1; }
+@media (max-width: 480px) { .hunt-field { height: 240px; } .hunt-title { font-size: 1.25rem; } }
+@media (prefers-reduced-motion: reduce) {
+  .hunt-mystery, .sparkle, .photo.shiny::after, .sil-wrap.shiny::after { animation: none; }
+  .sparkle.got, .sparkle.gone { animation: none; opacity: 0; }
+}
+
 /* Streak heat: glows hotter at 5, 10 and 25 in a row */
 #streakBox { transition: border-color .3s, box-shadow .3s, background .3s; }
 #streakBox[data-tier="1"] { border-color: #f3a33b; box-shadow: 0 0 0 2px #f3a33b44; }
@@ -616,6 +672,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   const score = Object.assign({ right: 0, streak: 0, played: 0, points: 0 }, store.get("score", {}));
   let seen = [];   // session-only: Pokémon shown this run (win or lose)
   let caught = []; // session-only: Pokémon correctly identified this run
+  let shinies = store.get("shinies", []); // saved: shiny Pokémon ever caught
 
   let POKEMON = [];
   let round = null;
@@ -681,6 +738,77 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
         <p class="evo-q">${esc(p.name)} evolves into <b>${esc(e.answer.name)}</b>!</p>
       </div>
     </div>`;
+  }
+
+  // ---------- shiny encounters + sparkle hunt ----------
+  // ~1 in 33 solo rounds (3%) is shiny. Before guessing, tap sparkles for bonus points.
+  // The hunt can't be lost: the shiny round always follows.
+  const SHINY_CHANCE = 0.03;
+  const HUNT_SPARKLES = 8;
+  const shinyUrl = (id) => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${id}.png`;
+  const imgSrc = (r) => (r.shiny && !r.shiny.imgFailed ? shinyUrl(r.p.id) : r.p.image_url);
+  let huntTimers = [];
+
+  function stopSparkleHunt() {
+    huntTimers.forEach(clearTimeout);
+    huntTimers = [];
+  }
+
+  function renderSparkleHunt(r) {
+    stopSparkleHunt();
+    r.shiny.sparkles = 0; // a re-render (settings change, Pokédex closed) starts the hunt over
+    const kid = settings.kidMode;
+    const life = kid ? 1900 : 1300;   // how long each sparkle stays tappable
+    const gap = kid ? 900 : 720;      // time between sparkles
+    card.innerHTML = `<div class="hunt">
+        <p class="hunt-title">✨ A shiny Pokémon is hiding! ✨</p>
+        <p class="hunt-sub">Tap the sparkles to lure it out. Each one is a bonus point!</p>
+        <div class="hunt-field" id="huntField" aria-label="Sparkle field">
+          <div class="hunt-mystery" aria-hidden="true">?</div>
+        </div>
+        <p class="hunt-count" aria-live="polite">Sparkles: <b id="huntCount">0</b> / ${HUNT_SPARKLES}</p>
+        <button class="iconbtn hunt-skip" type="button" id="huntSkip">Skip</button>
+      </div>`;
+    const field = $("huntField");
+    const done = () => {
+      if (round !== r || r.shiny.stage !== "hunt") return;
+      stopSparkleHunt();
+      r.shiny.stage = "guess";
+      field.classList.add("revealing");
+      const n = r.shiny.sparkles;
+      card.querySelector(".hunt-sub").textContent = n
+        ? `You caught ${n} sparkle${n === 1 ? "" : "s"}! Now guess who it is.`
+        : "Now guess who it is!";
+      if (settings.sfx && ensureAudio()) { ctx.resume(); const t = ctx.currentTime + 0.02; [79, 84, 88, 91].forEach((m, i) => pluck(sfxBus, m, t + i * 0.07, 0.2, 1.4)); }
+      huntTimers.push(setTimeout(() => { if (round === r) render(); }, 1300));
+    };
+    $("huntSkip").onclick = done;
+
+    for (let i = 0; i < HUNT_SPARKLES; i++) {
+      huntTimers.push(setTimeout(() => {
+        if (round !== r) return;
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "sparkle" + (kid ? " big" : "");
+        b.setAttribute("aria-label", "Sparkle");
+        b.textContent = "✨";
+        b.style.left = (8 + Math.random() * 74) + "%";
+        b.style.top = (8 + Math.random() * 70) + "%";
+        b.onclick = () => {
+          if (b.classList.contains("got")) return;
+          b.classList.add("got");
+          r.shiny.sparkles++;
+          $("huntCount").textContent = r.shiny.sparkles;
+          if (settings.sfx && ensureAudio()) { ctx.resume(); pluck(sfxBus, 84 + (r.shiny.sparkles % 5) * 2, ctx.currentTime + 0.01, 0.22, 0.8); }
+          setTimeout(() => b.remove(), 350);
+        };
+        field.appendChild(b);
+        huntTimers.push(setTimeout(() => { if (!b.classList.contains("got")) b.classList.add("gone"); setTimeout(() => b.remove(), 300); }, life));
+      }, 500 + i * gap));
+    }
+    huntTimers.push(setTimeout(done, 500 + (HUNT_SPARKLES - 1) * gap + life + 200));
+    // Only once audio is unlocked by an earlier tap; browsers block sound on page load.
+    if (settings.sfx && ctx && ctx.state === "running") { const t = ctx.currentTime + 0.02; [76, 83, 88].forEach((m, i) => pluck(sfxBus, m, t + i * 0.12, 0.18, 1.6)); }
   }
 
   // ---------- streak celebrations ----------
@@ -823,6 +951,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   // ---------- game ----------
   function newRound() {
     if (autoAdvanceTimer) { clearTimeout(autoAdvanceTimer); autoAdvanceTimer = null; }
+    stopSparkleHunt();
     if (currentCry) { currentCry.pause(); currentCry = null; }
     let pool = POKEMON.filter((p) => !seen.includes(p.id));
     if (pool.length === 0) { seen = []; caught = []; pool = POKEMON.slice(); }
@@ -832,8 +961,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     round = {
       p, game: settings.game, shown: (settings.game === "silhouette" || settings.game === "cry") ? 0 : 1, extra: 0, left: h2hGuesses, total: h2hGuesses,
       wrong: [], done: false, won: false, imgFailed: false,
-      choices: shuffle([p, ...decoys]), fresh: 1, msg: ""
+      choices: shuffle([p, ...decoys]), fresh: 1, msg: "",
+      shiny: !h2h && Math.random() < SHINY_CHANCE ? { stage: "hunt", sparkles: 0, imgFailed: false } : null
     };
+    if (round.shiny) { const im = new Image(); im.src = shinyUrl(p.id); }
     render();
     preloadNext();
   }
@@ -848,7 +979,9 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   function finish(won) {
     round.done = true; round.won = won; round.shown = 3;
     seen.push(round.p.id);
-    const pts = round.game === "clues" ? 1 : round.game === "silhouette" ? 2 : 3;
+    const base = round.game === "clues" ? 1 : round.game === "silhouette" ? 2 : 3;
+    const pts = round.shiny ? base * 2 + round.shiny.sparkles : base;
+    round.pts = pts;
 
     if (h2h) {
       // H2H: award points to current player, auto-advance to their next Pokémon
@@ -865,6 +998,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
     score.played++;
     if (won) { score.right++; score.streak++; caught.push(round.p.id); score.points += pts; round.evo = rollEvoBonus(round.p); } else { score.streak = 0; }
+    if (won && round.shiny && !shinies.includes(round.p.id)) { shinies.push(round.p.id); store.set("shinies", shinies); }
     paintScore();
     if (won) { const b = $("sPoints"); b.classList.remove("pts-flash"); void b.offsetWidth; b.classList.add("pts-flash"); }
     const milestone = won ? streakMilestone(score.streak) : null;
@@ -954,8 +1088,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   const eyeSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
 
   function photoHtml(r) {
-    return `<div class="photo" id="photo">
-      <img id="photoImg" src="${esc(r.p.image_url)}" alt="${esc(r.p.name)}" draggable="false">
+    return `<div class="photo ${r.shiny ? "shiny" : ""}" id="photo">
+      <img id="photoImg" src="${esc(imgSrc(r))}" alt="${esc(r.p.name)}" draggable="false">
     </div>`;
   }
 
@@ -964,8 +1098,8 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     const label = revealed
       ? `<div class="wtp its">It's ${esc(r.p.name)}!</div>`
       : `<div class="wtp">Who's that Pokémon?</div>`;
-    return `<div class="sil-wrap ${revealed ? "revealed" : ""}" id="photo">
-      <img id="photoImg" src="${esc(r.p.image_url)}" alt="${revealed ? esc(r.p.name) : "Mystery silhouette"}"
+    return `<div class="sil-wrap ${revealed ? "revealed" : ""} ${r.shiny && revealed ? "shiny" : ""}" id="photo">
+      <img id="photoImg" src="${esc(imgSrc(r))}" alt="${revealed ? esc(r.p.name) : "Mystery silhouette"}"
         draggable="false">
       ${label}
     </div>`;
@@ -991,6 +1125,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   function render() {
     const r = round, p = r.p;
+    if (r.shiny && r.shiny.stage === "hunt") return renderSparkleHunt(r);
     const silhouetteRound = r.game === "silhouette" && !r.imgFailed;
     const cryRound = r.game === "cry";
 
@@ -1030,7 +1165,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
             <button class="btn" type="submit">Guess</button>
           </form>`;
 
-      body = `${puzzle}
+      const shinyTag = r.shiny
+        ? `<p class="shiny-tag">✨ Shiny hunt! Guess it for <b>2× points</b>${r.shiny.sparkles ? ` + <b>${r.shiny.sparkles}</b> sparkle bonus` : ""}</p>`
+        : "";
+      body = `${shinyTag}${puzzle}
         <div class="tools">${tools}</div>
         <div class="lives"><span>Guesses left: ${r.left}</span><span class="dots" aria-hidden="true">${dots}</span></div>
         ${answer}
@@ -1038,11 +1176,12 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     } else {
       const nextPlayerNote = "";
       top = `<div class="mystery ${r.won ? "win" : "lose"}" aria-hidden="true">#${p.id}</div>
-        <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? `+${r.game === "clues" ? 1 : r.game === "silhouette" ? 2 : 3} point${r.game === "clues" ? "" : "s"} &mdash; ${r.game === "cry" ? "Cry" : r.game === "silhouette" ? "Silhouette" : "Clues"}` : "Here\u2019s who it was."}${nextPlayerNote}</p></div>`;
+        <div><h2>${r.won ? "You got it!" : "Good try!"}</h2><p>${r.won ? `+${r.pts} point${r.pts === 1 ? "" : "s"} &mdash; ${r.shiny ? "✨ Shiny! " : ""}${r.game === "cry" ? "Cry" : r.game === "silhouette" ? "Silhouette" : "Clues"}` : r.shiny ? "The shiny got away! Here\u2019s who it was." : "Here\u2019s who it was."}${nextPlayerNote}</p></div>`;
       body = `
         ${r.imgFailed ? "" : r.game === "silhouette" ? silhouetteHtml(r) : photoHtml(r)}
         <div class="result">
-          <p class="big">${esc(p.name)}</p>
+          <p class="big">${r.shiny ? "✨ " : ""}${esc(p.name)}</p>
+          ${r.shiny && r.won ? `<p class="shiny-caught">Shiny ${esc(p.name)} added to your collection!</p>` : ""}
           <div class="types">${[p.type1, p.type2].filter(Boolean).map((t) => `<span class="type">${esc(t)}</span>`).join("")}</div>
           <p class="meta">Number ${p.id} of 151</p>
         </div>
@@ -1070,6 +1209,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     const img = $("photoImg");
     if (img) img.onerror = () => {
       if (round !== r) return;
+      if (r.shiny && !r.shiny.imgFailed) { r.shiny.imgFailed = true; render(); return; }
       r.imgFailed = true;
       if (!r.done) r.msg = "The picture couldn't load, so here are clues instead.";
       render();
@@ -1521,7 +1661,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
     const headerHtml = isWin
       ? `<div class="dex-win-head"><h2>You caught them all!</h2><p>${total} of ${total} &mdash; congratulations!</p></div>`
-      : `<div class="dex-head"><h2>Pok&eacute;dex</h2><p>${caught.length} of ${total} caught</p></div>`;
+      : `<div class="dex-head"><h2>Pok&eacute;dex</h2><p>${caught.length} of ${total} caught${shinies.length ? ` &middot; ✨ ${shinies.length} shiny` : ""}</p></div>`;
 
     const barHtml = `<div class="dex-bar"><div class="dex-bar-fill" style="width:${barPct}%"></div></div>`;
 
@@ -1535,8 +1675,9 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       </div>` : "";
 
     const gridHtml = `<div class="dex-grid">${sorted.map((p) =>
-      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${newP && p.id === newP.id ? "fresh-catch" : ""}" data-pid="${p.id}">
+      `<div class="dex-slot ${caught.includes(p.id) ? "got" : ""} ${shinies.includes(p.id) ? "shiny" : ""} ${newP && p.id === newP.id ? "fresh-catch" : ""}" data-pid="${p.id}">
         <img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy">
+        ${shinies.includes(p.id) ? '<span class="dex-star" aria-label="Shiny caught">★</span>' : ""}
         <span class="dex-n">${p.id}</span>
       </div>`).join("")}</div>`;
 
@@ -1578,7 +1719,10 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       if (!e.relatedTarget?.closest(".dex-grid")) tip.hidden = true;
     });
 
-    const close = () => { tip.remove(); overlay.remove(); };
+    // Pause a running sparkle hunt behind the Pokédex; it restarts fresh on close.
+    const huntPaused = round && round.shiny && round.shiny.stage === "hunt";
+    if (huntPaused) { stopSparkleHunt(); round.shiny.sparkles = 0; }
+    const close = () => { tip.remove(); overlay.remove(); if (huntPaused && round.shiny && round.shiny.stage === "hunt") render(); };
 
     if (isWin) {
       overlay.querySelector("#dexAgain").onclick = () => { seen = []; caught = []; paintScore(); close(); newRound(); };
