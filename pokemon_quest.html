@@ -282,6 +282,44 @@ button:focus-visible, summary:focus-visible { outline: 3px solid var(--sun); out
 }
 .pts-flash { animation: pts-flash .55s ease-out; }
 
+/* Streak heat: glows hotter at 5, 10 and 25 in a row */
+#streakBox { transition: border-color .3s, box-shadow .3s, background .3s; }
+#streakBox[data-tier="1"] { border-color: #f3a33b; box-shadow: 0 0 0 2px #f3a33b44; }
+#streakBox[data-tier="2"] { border-color: #e8602c; background: color-mix(in srgb, #e8602c 12%, var(--paper)); box-shadow: 0 0 14px #e8602c66; }
+#streakBox[data-tier="3"] { border-color: #8b5cf6; background: color-mix(in srgb, #8b5cf6 14%, var(--paper)); box-shadow: 0 0 18px #8b5cf688; animation: legend-glow 1.8s ease-in-out infinite; }
+#streakBox[data-tier="1"] b::after, #streakBox[data-tier="2"] b::after { content: " \1F525"; font-size: .7em; }
+#streakBox[data-tier="3"] b::after { content: " \26A1"; font-size: .7em; }
+@keyframes legend-glow { 50% { box-shadow: 0 0 26px #8b5cf6bb; } }
+
+/* Streak milestone banner */
+.streak-banner {
+  position: fixed; z-index: 400; left: 50%; top: 16px; transform: translateX(-50%);
+  width: min(420px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px;
+  background: var(--paper); color: var(--ink); border: 3px solid var(--sun); border-radius: 20px;
+  box-shadow: 0 10px 40px -8px rgba(0,0,0,.45); pointer-events: none;
+  animation: banner-in .5s cubic-bezier(.2,1.4,.4,1);
+}
+.streak-banner.out { opacity: 0; transform: translateX(-50%) translateY(-20px); transition: opacity .45s, transform .45s; }
+.streak-banner img { width: 76px; height: 76px; object-fit: contain; flex: none; animation: banner-hop .6s ease-out .2s 2; }
+.streak-banner p { margin: 0; }
+.sb-count { font: 800 .85rem var(--body); color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.sb-title { font: 800 1.6rem/1.05 var(--display); color: var(--leaf); }
+.sb-cheer { font-weight: 700; font-size: .92rem; }
+.streak-banner.lvl2 { border-color: #e8602c; }
+.streak-banner.lvl2 .sb-title { color: #e8602c; }
+.streak-banner.lvl3 { border-color: #3399ff; }
+.streak-banner.lvl3 .sb-title { color: #3399ff; }
+.streak-banner.lvl4 { border-color: #f3a33b; }
+.streak-banner.lvl4 .sb-title { color: #e08a10; }
+.streak-banner.lvl5, .streak-banner.lvl6 { border-color: #8b5cf6; background: linear-gradient(135deg, var(--paper), color-mix(in srgb, #8b5cf6 16%, var(--paper))); }
+.streak-banner.lvl5 .sb-title, .streak-banner.lvl6 .sb-title { color: #8b5cf6; }
+@keyframes banner-in { from { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(.85); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes banner-hop { 40% { transform: translateY(-10px) rotate(-6deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .streak-banner, .streak-banner img, #streakBox[data-tier="3"] { animation: none; }
+}
+
 .loading { color: var(--muted); text-align: center; padding: 30px 0; font-weight: 700; }
 footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
@@ -498,7 +536,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
 
   <section class="score" aria-label="Score">
     <div><b id="sRight">0</b><span>Guessed</span></div>
-    <div><b id="sStreak">0</b><span>Streak</span></div>
+    <div id="streakBox"><b id="sStreak">0</b><span>Streak</span></div>
     <div><b id="sPoints">0</b><span>Points</span></div>
     <div><b id="sCaught">0/151</b><span>Caught</span></div>
   </section>
@@ -645,6 +683,57 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     </div>`;
   }
 
+  // ---------- streak celebrations ----------
+  // At 5, 10, 15, 20, 25, 50 and every 25 after: fanfare + a themed Pokémon's cry + banner.
+  const STREAK_MILESTONES = {
+    5:  { id: 25,  title: "On a roll!",    cheer: "Pikachu is cheering you on!",      level: 1 },
+    10: { id: 6,   title: "Fired up!",     cheer: "Charizard roars for you!",         level: 2 },
+    15: { id: 130, title: "Unstoppable!",  cheer: "Gyarados is making waves!",        level: 3 },
+    20: { id: 149, title: "Dragon power!", cheer: "Dragonite flies in to celebrate!", level: 4 },
+    25: { id: 150, title: "Legendary!",    cheer: "Mewtwo senses your power!",        level: 5 },
+    50: { id: 151, title: "Mythical!",     cheer: "Mew appeared just for you!",       level: 6 }
+  };
+  const STREAK_LEGENDS = [
+    { id: 144, cheer: "Articuno swoops down!" },
+    { id: 145, cheer: "Zapdos crackles with joy!" },
+    { id: 146, cheer: "Moltres blazes across the sky!" },
+    { id: 151, cheer: "Mew appeared just for you!" }
+  ];
+
+  function streakMilestone(n) {
+    if (STREAK_MILESTONES[n]) return STREAK_MILESTONES[n];
+    if (n > 50 && n % 25 === 0) {
+      const l = STREAK_LEGENDS[(n / 25 - 3) % STREAK_LEGENDS.length];
+      return { id: l.id, title: "Legend streak!", cheer: l.cheer, level: 6 };
+    }
+    return null;
+  }
+
+  function celebrateStreak(n, m) {
+    const name = (POKEMON.find((x) => x.id === m.id) || {}).name || "";
+    launchConfetti(true);
+    if (m.level >= 4) setTimeout(() => launchConfetti(true), 700);
+    if (settings.sfx) {
+      fanfare(m.level);
+      // The cry is its own Audio so it never cuts off the round's cry in Cry mode.
+      setTimeout(() => {
+        const a = new Audio(`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${m.id}.ogg`);
+        a.volume = 0.8;
+        a.play().catch(() => {});
+      }, 450 + m.level * 160);
+    }
+    const old = document.querySelector(".streak-banner");
+    if (old) old.remove();
+    const el = document.createElement("div");
+    el.className = `streak-banner lvl${m.level}`;
+    el.setAttribute("role", "status");
+    el.innerHTML = `<img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${m.id}.png" alt="${esc(name)}">
+      <div><p class="sb-count">🔥 ${n} in a row!</p><p class="sb-title">${esc(m.title)}</p><p class="sb-cheer">${esc(m.cheer)}</p></div>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.classList.add("out"), 3400);
+    setTimeout(() => el.remove(), 3900);
+  }
+
   const WAGER_POKEMON = [
     {id:810,name:"Grookey"},{id:812,name:"Rillaboom"},{id:813,name:"Scorbunny"},{id:815,name:"Cinderace"},
     {id:816,name:"Sobble"},{id:818,name:"Inteleon"},{id:823,name:"Corviknight"},{id:831,name:"Wooloo"},
@@ -725,6 +814,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
   function paintScore() {
     $("sRight").textContent = score.right;
     $("sStreak").textContent = score.streak;
+    $("streakBox").dataset.tier = score.streak >= 25 ? "3" : score.streak >= 10 ? "2" : score.streak >= 5 ? "1" : "0";
     $("sPoints").textContent = score.points;
     $("sCaught").textContent = caught.length + "/" + POKEMON.length;
     store.set("score", score);
@@ -777,8 +867,14 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (won) { score.right++; score.streak++; caught.push(round.p.id); score.points += pts; round.evo = rollEvoBonus(round.p); } else { score.streak = 0; }
     paintScore();
     if (won) { const b = $("sPoints"); b.classList.remove("pts-flash"); void b.offsetWidth; b.classList.add("pts-flash"); }
-    sfx(won ? "win" : "lose");
-    if (won) launchConfetti(settings.kidMode);
+    const milestone = won ? streakMilestone(score.streak) : null;
+    if (milestone) {
+      round.milestone = true;
+      celebrateStreak(score.streak, milestone);
+    } else {
+      sfx(won ? "win" : "lose");
+      if (won) launchConfetti(settings.kidMode);
+    }
     if (won && caught.length === POKEMON.length) {
       render();
       sfx("win-all");
@@ -1018,7 +1114,7 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
       // Auto-advance in solo mode (not h2h, not win-all, not while an evolution bonus is waiting)
       if (!h2h && !evoPending && !(r.won && caught.length === POKEMON.length)) {
         if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
-        autoAdvanceTimer = setTimeout(() => { autoAdvanceTimer = null; if (round === r) newRound(); }, 2500);
+        autoAdvanceTimer = setTimeout(() => { autoAdvanceTimer = null; if (round === r) newRound(); }, r.milestone ? 4000 : 2500);
       }
     }
   }
@@ -1158,6 +1254,35 @@ footer { color: var(--muted); font-size: .8rem; text-align: center; }
     if (musicOn) { setMusic(false); setMusic(true); }
     $("shuffleBtn").title = `Now: ${next.label}`;
   };
+
+  // Brassy fanfare for streak milestones: rising arpeggio, then a held chord.
+  // Higher levels start higher and add more notes.
+  function brass(midi, t, dur, vol) {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.setValueAtTime(vol, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 2400;
+    g.connect(f).connect(sfxBus);
+    [["square", 0, 0.35], ["sawtooth", 7, 0.25], ["triangle", -1200, 0.5]].forEach(([type, det, amp]) => {
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = type; o.frequency.value = hz(midi); o.detune.value = det; og.gain.value = amp;
+      o.connect(og).connect(g); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  function fanfare(level) {
+    if (!ensureAudio()) return;
+    ctx.resume();
+    const t = ctx.currentTime + 0.03, root = 60 + Math.min(level - 1, 5);
+    const run = level >= 3 ? [0, 4, 7, 12, 16] : [0, 4, 7, 12];
+    const step = 0.09;
+    run.forEach((iv, i) => brass(root + iv, t + i * step, 0.16, 0.09));
+    const end = t + run.length * step;
+    const chord = level >= 5 ? [0, 4, 7, 12, 16, 19] : [0, 4, 7, 12];
+    chord.forEach((iv) => brass(root + iv, end, 0.5 + level * 0.08, 0.06));
+    chord.forEach((iv, i) => pluck(sfxBus, root + 12 + iv, end + i * 0.04, 0.12, 1.6));
+  }
 
   function sfx(kind) {
     if (!settings.sfx || !ensureAudio()) return;
